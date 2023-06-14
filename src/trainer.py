@@ -1,5 +1,6 @@
 from torch.distributions import Categorical,kl_divergence
 import torch
+import torch.nn as nn
 import numpy as np
 import time
 import os
@@ -7,7 +8,6 @@ import os
 from ENV.setup import make
 from src.model import PPOTransformerModel
 from src.agent import Agent
-from src.rollout_buffer import RolloutBuffer
 from src.writer import Writer
 
 class Trainer:
@@ -21,30 +21,75 @@ class Trainer:
         self.memory_length = config["memory_length"]
 
         self.writer        = Writer(path)
-        self.buffer        = RolloutBuffer()
-        self.agent         = Agent()
+        self.agent         = Agent(self.env,self.model)
     
-    def _cal_loss(self,value,value_new,entropy,log_prob,log_prob_new,rtgs):
+    def _cal_loss(self,value,value_new,entropy,log_prob,log_prob_new,advantage):
         """Calculate Total Loss"""
-        advantage       = rtgs - value.detach()
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
 
         actor_loss      = -torch.where(
                             (Kl >= self.policy_kl_range) & (ratios >= 1),
-                            ratios * advantage - self.policy_params * Kl,
+                            ratios * advantage - self.config["policy_params"] * Kl,
                             ratios * advantage
                         ).mean()
         # print(actor_loss)
         value_clipped   = value + torch.clamp(value_new - value, -self.value_clip, self.value_clip)
-
-        critic_loss     = 0.5 * torch.max((rtgs-value_new)**2,(rtgs-value_clipped)**2).mean()
-        total_loss      = actor_loss + self.critic_coef * critic_loss - self.data["entropy_coef"] * entropy
+        returns         = value + advantage
+        critic_loss     = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2).mean()
+        total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
         
-        return total_loss
+        return actor_loss, critic_loss, total_loss
 
     def _mask(self):
         return torch.tril(torch.ones((self.memory_length, self.memory_length)), diagonal=-1)
 
-    def train():
-        pass
+    def train(self):
+        training = True
+        
+        #NOTE: init memory
+
+            ##
+        step = 0
+        while training:
+            win_rate = self.agent.run(num_games=self.config["num_game_per_batch"])
+            self.agent.to_tensor()
+            self.agent.cal_advantages()
+
+            policy          = self.model.get_policy(self.agent.batch["states"],memory,self._mask(),)
+            categorical_old = Categorical(logits=policy.masked_fill(self.agent.batch["action_mask"]==0,float('-1e20')))
+            log_prob_old    = categorical_old.log_prob(self.agent.batch["actions"].view(1,-1)).squeeze(0)
+            
+            for mini_batch in self.agent.mini_batch_loader():
+                pol_new,val_new,memory = self.model(mini_batch["states"],memory,self._mask(),)
+                val_new         = val_new.squeeze(1)
+                categorical_new = Categorical(logits=pol_new.masked_fill(mini_batch["action_mask"]==0,float('-1e20')))
+                log_prob_new    = categorical_new.log_prob(mini_batch["actions"].view(1,-1)).squeeze(0)
+                entropy         = categorical_new.entropy().mean()
+                actor_loss, critic_loss, total_loss = self._cal_loss(
+                    value       = mini_batch["values"],
+                    value_new   = val_new,
+                    entropy     = entropy,
+                    log_prob    = log_prob_old,
+                    log_prob_new= log_prob_new,
+                    advantage   = mini_batch["advantages"]
+                )
+
+                if not torch.isnan(total_loss).any():
+                    self.optimizer.zero_grad()
+                    total_loss.backward()
+                    nn.utils.clip_grad_norm_(self.model.parameters(),max_norm=self.config["max_grad_norm"])
+                    self.optimizer.step()
+
+                with torch.no_grad():
+                    self.writer.add(
+                        step        =step,
+                        win_rate    =win_rate,
+                        reward      =self.agent.batch["rewards"].mean(),
+                        entropy     =entropy,
+                        actor_loss  =actor_loss,
+                        critic_loss =critic_loss,
+                        total_loss  =total_loss
+                    )
+            
+            self.agent.del_data()
