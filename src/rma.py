@@ -51,7 +51,7 @@ class RelativeMultiheadAttention(nn.Module):
         R = self.Pos(pos_embedding).view(batch_size,-1,self.num_heads,self.heads_dim)
         # Relative counterpart R shape: (batch_size,key_len,num_heads,head_dim)
 
-        content_score = torch.einsum("bqhd,bkhd->bhqk",[queries+self.U,keys])
+        content_score  = torch.einsum("bqhd,bkhd->bhqk",[queries+self.U,keys])
         position_score = torch.einsum("bqhd,bkhd->bhqk",[queries+self.V,R])
         position_score = self._shift(position_score)
 
@@ -69,12 +69,11 @@ class RelativeMultiheadAttention(nn.Module):
     def _shift(self,pos_score:torch.Tensor)->torch.Tensor:
         """Shift mechanism"""
         batch_size, num_heads, seq_length1, seq_length2 = pos_score.size()
-        zeros = pos_score.new_zeros(batch_size, num_heads, seq_length1, 1)
+        
+        zeros            = pos_score.new_zeros(batch_size, num_heads, seq_length1, 1)
         padded_pos_score = torch.cat([zeros, pos_score], dim=-1)
-        # print(padded_pos_score)
         padded_pos_score = padded_pos_score.view(batch_size, num_heads, seq_length2 + 1, seq_length1)
-        # print(padded_pos_score)
-        pos_score = padded_pos_score[:, :, 1:].view_as(pos_score)
+        pos_score        = padded_pos_score[:, :, 1:].view_as(pos_score)
 
         return pos_score
 

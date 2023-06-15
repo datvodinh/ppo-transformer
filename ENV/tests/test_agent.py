@@ -33,8 +33,8 @@ def get_changed_files():
 def test_print_name():
     changed_files = get_changed_files()
     for file in changed_files:
-        if "Base/" in file and "/_env.py" in file:
-            env_name = file.replace("Base/", "").replace("/_env.py", "")
+        if "src/Base/" in file and "/env.py" in file:
+            env_name = file.replace("src/Base/", "").replace("/env.py", "")
             print(env_name, "checking...")
             check_env, list_bug = check_pytest(env_name)
             if check_env == False:
@@ -44,8 +44,8 @@ def test_print_name():
                 print("ENV:", env_name, "TRUE")
                 assert True
 
-        if "Agent/" in file and "/Agent_player.py" in file:
-            agent_name = file.replace("Agent/", "").replace("/Agent_player.py", "")
+        if "src/Agent/" in file and "/Agent_player.py" in file:
+            agent_name = file.replace("src/Agent/", "").replace("/Agent_player.py", "")
             print(agent_name, "checking...")
             bool_check_agent, list_bug = check_agent(agent_name)
             if bool_check_agent == False:

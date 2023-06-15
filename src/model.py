@@ -33,17 +33,17 @@ class PPOTransformerModel(nn.Module):
         return layer
     
     def forward(self,state,memories, mask, memory_indices):
-        out = self.fc(state)
-        out,memory = self.transformer(out,memories, mask, memory_indices)
         
-        policy = self.policy(out)
-        value  = self.value(out)
+        out        = self.fc(state)
+        out,memory = self.transformer(out,memories, mask, memory_indices)
+        policy     = self.policy(out)
+        value      = self.value(out)
 
         return policy,value,memory
     
     def get_policy(self,state,memories, mask, memory_indices):
-        out = self.fc(state)
-        out,_= self.transformer(out,memories, mask, memory_indices)
+        out    = self.fc(state)
+        out,_  = self.transformer(out,memories, mask, memory_indices)
         policy = self.policy(out)
         return policy
     

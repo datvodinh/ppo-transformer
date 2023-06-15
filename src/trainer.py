@@ -21,7 +21,7 @@ class Trainer:
         self.memory_length = config["memory_length"]
 
         self.writer        = Writer(path)
-        self.agent         = Agent(self.env,self.model)
+        self.agent         = Agent(self.env,self.model,config)
     
     def _cal_loss(self,value,value_new,entropy,log_prob,log_prob_new,advantage):
         """Calculate Total Loss"""
@@ -33,16 +33,13 @@ class Trainer:
                             ratios * advantage - self.config["policy_params"] * Kl,
                             ratios * advantage
                         ).mean()
-        # print(actor_loss)
+
         value_clipped   = value + torch.clamp(value_new - value, -self.value_clip, self.value_clip)
         returns         = value + advantage
         critic_loss     = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2).mean()
         total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
         
         return actor_loss, critic_loss, total_loss
-
-    def _mask(self):
-        return torch.tril(torch.ones((self.memory_length, self.memory_length)), diagonal=-1)
 
     def train(self):
         training = True
@@ -54,25 +51,28 @@ class Trainer:
         while training:
             win_rate = self.agent.run(num_games=self.config["num_game_per_batch"])
             self.agent.to_tensor()
-            self.agent.cal_advantages()
+            self.agent.cal_advantages(self.config["gamma"],self.config["gae_lambda"])
 
-            policy          = self.model.get_policy(self.agent.batch["states"],memory,self._mask(),)
-            categorical_old = Categorical(logits=policy.masked_fill(self.agent.batch["action_mask"]==0,float('-1e20')))
-            log_prob_old    = categorical_old.log_prob(self.agent.batch["actions"].view(1,-1)).squeeze(0)
+            with torch.no_grad():
+                policy          = self.model.get_policy(self.agent.batch["states"],memory,self.agent.memory_mask,)
+                categorical_old = Categorical(logits=policy.masked_fill(self.agent.batch["action_mask"]==0,float('-1e20')))
+                log_prob_old    = categorical_old.log_prob(self.agent.batch["actions"].view(1,-1)).squeeze(0)
             
-            for mini_batch in self.agent.mini_batch_loader():
-                pol_new,val_new,memory = self.model(mini_batch["states"],memory,self._mask(),)
-                val_new         = val_new.squeeze(1)
-                categorical_new = Categorical(logits=pol_new.masked_fill(mini_batch["action_mask"]==0,float('-1e20')))
-                log_prob_new    = categorical_new.log_prob(mini_batch["actions"].view(1,-1)).squeeze(0)
-                entropy         = categorical_new.entropy().mean()
+            mini_batch_loader = self.agent.mini_batch_loader()
+            for mini_batch in mini_batch_loader:
+                pol_new,val_new,memory = self.model(mini_batch["states"],memory,self.agent.memory_mask,)
+                val_new                = val_new.squeeze(1)
+                categorical_new        = Categorical(logits=pol_new.masked_fill(mini_batch["action_mask"]==0,float('-1e20')))
+                log_prob_new           = categorical_new.log_prob(mini_batch["actions"].view(1,-1)).squeeze(0)
+                entropy                = categorical_new.entropy().mean()
+
                 actor_loss, critic_loss, total_loss = self._cal_loss(
-                    value       = mini_batch["values"],
-                    value_new   = val_new,
-                    entropy     = entropy,
-                    log_prob    = log_prob_old,
-                    log_prob_new= log_prob_new,
-                    advantage   = mini_batch["advantages"]
+                    value        = mini_batch["values"],
+                    value_new    = val_new,
+                    entropy      = entropy,
+                    log_prob     = log_prob_old,
+                    log_prob_new = log_prob_new,
+                    advantage    = mini_batch["advantages"]
                 )
 
                 if not torch.isnan(total_loss).any():
@@ -83,13 +83,17 @@ class Trainer:
 
                 with torch.no_grad():
                     self.writer.add(
-                        step        =step,
-                        win_rate    =win_rate,
-                        reward      =self.agent.batch["rewards"].mean(),
-                        entropy     =entropy,
-                        actor_loss  =actor_loss,
-                        critic_loss =critic_loss,
-                        total_loss  =total_loss
+                        step        = step,
+                        win_rate    = win_rate,
+                        reward      = self.agent.batch["rewards"].mean(),
+                        entropy     = entropy,
+                        actor_loss  = actor_loss,
+                        critic_loss = critic_loss,
+                        total_loss  = total_loss
                     )
             
-            self.agent.del_data()
+            self.agent.reset_data()
+
+    def _save_model(model:PPOTransformerModel,path):
+        torch.save(model.state_dict(),path)
+

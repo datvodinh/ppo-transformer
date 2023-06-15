@@ -1,5 +1,6 @@
 import warnings
-from setup import load_module_player, make
+from setup import make
+from src.Utils import load_module_player
 
 warnings.filterwarnings("ignore")
 from numba.core.errors import (

@@ -8,32 +8,32 @@
 .pytest_cache
 # .github
 
-Agent/Chain3/Data/Catan_1
-Agent/Chain3/Data/Century_1
-Agent/Chain3/Data/Splendor_1
-Agent/Chain3/Data/MachiKoro_1
-Agent/Chain3/Data/Splendor_v2_1
-Agent/Chain3/Data/Splendor_v3_1
-Agent/Chain3/Data/StoneAge_1
-Agent/Chain3/Data/TLMN_1
-Agent/Chain3/Data/Sheriff_1
+src/Agent/Chain3/Data/Catan_1
+src/Agent/Chain3/Data/Century_1
+src/Agent/Chain3/Data/Splendor_1
+src/Agent/Chain3/Data/MachiKoro_1
+src/Agent/Chain3/Data/Splendor_v2_1
+src/Agent/Chain3/Data/Splendor_v3_1
+src/Agent/Chain3/Data/StoneAge_1
+src/Agent/Chain3/Data/TLMN_1
+src/Agent/Chain3/Data/Sheriff_1
 
-Agent/Chain4/Data/Catan_1
-Agent/Chain4/Data/Century_1
-Agent/Chain4/Data/Splendor_1
-Agent/Chain4/Data/MachiKoro_1
-Agent/Chain4/Data/Splendor_v2_1
-Agent/Chain4/Data/Splendor_v3_1
-Agent/Chain4/Data/StoneAge_1
-Agent/Chain4/Data/SushiGo_1
-Agent/Chain4/Data/Sheriff_1
-Agent/Chain4/Data/Durak_1
-Agent/Chain4/Data/Fantan_1
-Agent/Chain4/Data/Fantan_1
-Agent/Chain4/Data/GoFish_1
+src/Agent/Chain4/Data/Catan_1
+src/Agent/Chain4/Data/Century_1
+src/Agent/Chain4/Data/Splendor_1
+src/Agent/Chain4/Data/MachiKoro_1
+src/Agent/Chain4/Data/Splendor_v2_1
+src/Agent/Chain4/Data/Splendor_v3_1
+src/Agent/Chain4/Data/StoneAge_1
+src/Agent/Chain4/Data/SushiGo_1
+src/Agent/Chain4/Data/Sheriff_1
+src/Agent/Chain4/Data/Durak_1
+src/Agent/Chain4/Data/Fantan_1
+src/Agent/Chain4/Data/Fantan_1
+src/Agent/Chain4/Data/GoFish_1
 
-Agent/Chain4/Data/CatanNoExchange_1
-Agent/Chain4/Data/CatanNoExchange_0
+src/Agent/Chain4/Data/CatanNoExchange_1
+src/Agent/Chain4/Data/CatanNoExchange_0
 
 envtest.py
 

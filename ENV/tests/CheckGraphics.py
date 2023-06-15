@@ -21,10 +21,10 @@ import os
 def check_graphics(game_name):
     BOOL_CHECK_GRAPHICS = True
     msg = []
-    if os.path.exists(f"Base/{game_name}/_render_func.py") == False:
+    if os.path.exists(f"src/Base/{game_name}/_render_func.py") == False:
         BOOL_CHECK_GRAPHICS = False
         msg.append("_render_func.py not found")
-    elif os.path.exists(f"Base/{game_name}/env.py") == False:
+    elif os.path.exists(f"src/Base/{game_name}/env.py") == False:
         BOOL_CHECK_GRAPHICS = False
         msg.append("env.py not found")
     # else:
