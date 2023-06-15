@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from src.rma import *
 from src.gru import *
+from src.memory import *
 
 class SinusoidalPE(nn.Module):
     """Relative positional encoding"""
@@ -33,9 +34,9 @@ class TransformerBlock(nn.Module):
             nn.ReLU(),
         )
 
-    def forward(self,query,key,value,mask=None):
+    def forward(self,query,key,pos_embedding,mask=None):
         norm_key = self.layer_norm1(key)
-        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,mask)
+        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,mask)
         out      = self.gate1(query,Y)
         E        = self.fc(self.layer_norm2(out))
         out      = self.gate2(out,E)
@@ -47,14 +48,20 @@ class TransformerBlock(nn.Module):
 
 class GatedTransformerXL(nn.Module):
     """Gated Transformer XL model"""
-    def __init__(self, config, input_dim, max_episode_steps=500) -> None:
+    def __init__(self, 
+                 config:dict,
+                 input_dim:int,
+                 max_episode_steps=500) -> None:
+        
         super().__init__()
         self.config            = config
         self.num_blocks        = config["num_blocks"]
         self.embed_dim         = config["embed_dim"]
         self.num_heads         = config["num_heads"]
+        self.memory_length     = config["memory_length"]
         self.max_episode_steps = max_episode_steps
         self.activation        = nn.ReLU()
+        self.memory            = Memory(self.memory_length,config["batch_size"],self.embed_dim,self.num_blocks)
 
         # Input embedding layer
         self.linear_embedding  = nn.Linear(input_dim, self.embed_dim)
@@ -65,21 +72,65 @@ class GatedTransformerXL(nn.Module):
         self.transformer_blocks = nn.ModuleList([
             TransformerBlock(self.embed_dim, self.num_heads, config) 
             for _ in range(self.num_blocks)])
+        
+        self.att_mask = {}  # create an attention mask for each different seq_len, in this way we don't need to create a
+        # new one each time we call the forward method
+        self.pos_embedding_dict = {}  # create a pos embedding for each different seq_len
 
-    def forward(self, h, memories, mask, memory_indices):
+    def reset_memory(self, 
+                     batch_size: Optional[int] = None, 
+                     state: Optional[torch.Tensor] = None):
+
+        self.memory = Memory(memory_len=self.memory_len, layer_num=self.layer_num, embedding_dim=self.embedding_dim)
+        if batch_size is not None:
+            self.memory = Memory(self.memory_len, batch_size, self.embedding_dim, self.layer_num)
+        elif state is not None:
+            self.memory.init(state)
+
+    def forward(self, h:torch.Tensor):
+
+        h = torch.transpose(h,1,0) # (batch_size, cur_seq, input_dim) -> (cur_seq, batch_size, input_dim)
         # Feed embedding layer and activate
+        cur_seq, bs = h.shape[:2]
+        memory = None if self.memory is None else self.memory.get()
+
         h = self.activation(self.linear_embedding(h))
-
+        memory = self.memory.get()
         # Positional embedding
-        pos_embedding = self.pos_embedding(self.max_episode_steps)[memory_indices]
-        memories      = memories + pos_embedding.unsqueeze(2)
+        prev_seq = self.memory_len
+        full_seq = cur_seq + prev_seq
 
-        # Forward transformer blocks
-        out_memories = []
-        for i, block in enumerate(self.transformer_blocks):
-            out_memories.append(h.detach())
-            out = block(out.unsqueeze(1), memories[:, :, i], memories[:, :, i],  mask) # args: query, value, key,  mask
-            out = out.squeeze()
-            if len(out.shape) == 1:
-                out = out.unsqueeze(0)
-        return out, torch.stack(out_memories, dim=1)
+        if cur_seq in self.att_mask.keys():
+            attn_mask = self.att_mask[cur_seq]
+        else:
+            attn_mask = (
+                torch.triu(
+                    torch.ones((cur_seq, full_seq)),
+                    diagonal=1 + prev_seq,  # fixed in train, eval, collect
+                ).bool().unsqueeze(-1).to(h.device)
+            )  # cur_seq x full_seq x 1
+            self.att_mask[cur_seq] = attn_mask
+
+        if cur_seq in self.pos_embedding_dict.keys():
+            pos_embedding = self.pos_embedding_dict[cur_seq]
+        else:
+            pos_ips = torch.arange(full_seq - 1, -1, -1.0, dtype=torch.float)  # full_seq
+            pos_embedding = self.pos_embedding(pos_ips.to(h.device))
+            self.pos_embedding_dict[cur_seq] = pos_embedding
+
+        hidden_state = [h]
+        out = h
+        for i in range(self.num_blocks):
+            layer = self.transformer_blocks[i]
+            out = layer(
+                query=out,
+                key=torch.cat([memory[i], out], dim=0),
+                pos_embedding=pos_embedding,
+                mask=attn_mask
+            )  # cur_seq x bs x embedding_dim
+            hidden_state.append(out.clone())
+
+        self.memory.update(hidden_state)  # (layer_num+1) x memory_len x batch_size x embedding_dim
+        out = torch.transpose(out, 1, 0)  #  (cur_seq, batch_size, input_dim) ->  (batch_size, cur_seq, input_dim)
+
+        return out

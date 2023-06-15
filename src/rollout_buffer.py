@@ -18,9 +18,9 @@ class RolloutBuffer:
         self.batch["states"].append(state)
         self.batch["actions"].append(action)
         self.batch["values"].append(value)
-        self.batch["rewards"].append(reward)
         self.batch["dones"].append(done)
         self.batch["action_mask"].append(valid_action)
+        self.batch["rewards"].append(reward)
 
     def reset_data(self):
         """Clear all data"""
@@ -63,8 +63,6 @@ class RolloutBuffer:
             mini_batch_indices  = indices[start: end]
             mini_batch          = {}
             for key, value in self.batch.items():
-                if key == "memory_indices":
-                    mini_batch[key] = 0#####NOTE
                 mini_batch[key] = value[mini_batch_indices]
             yield mini_batch
 
@@ -72,17 +70,3 @@ class RolloutBuffer:
         """Turn data into tensor"""
         for key,value in self.batch.items():
             self.batch[key] = torch.tensor(value,dtype=torch.float32)
-
-    def memory_index_select(memory, dim, index):
-        """
-        Selects values from the input tensor at the given indices along the given dimension.
-        """
-        for ii in range(1, len(input.shape)):
-            if ii != dim:
-                index = index.unsqueeze(ii)
-        expanse      = list(input.shape)
-        expanse[0]   = -1
-        expanse[dim] = -1
-        index        = index.expand(expanse)
-        return torch.gather(input, dim, index) 
-

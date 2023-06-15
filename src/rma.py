@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class RelativeMultiheadAttention(nn.Module):
     """Calculate Relative Multihead Attention"""
@@ -53,12 +54,12 @@ class RelativeMultiheadAttention(nn.Module):
 
         content_score  = torch.einsum("bqhd,bkhd->bhqk",[queries+self.U,keys])
         position_score = torch.einsum("bqhd,bkhd->bhqk",[queries+self.V,R])
-        position_score = self._shift(position_score)
+        position_score = self._rel_shift(position_score)
 
         attention_score = (content_score + position_score) / self.d
 
         if mask is not None:
-            attention_score = attention_score.masked_fill(mask==0,float("-1e20"))
+            attention_score = attention_score.masked_fill(mask==0,float("-inf"))
 
         alpha = torch.einsum("bhqk,bvhd->bqhd",[attention_score,values]).view(batch_size,-1,self.embed_dim)
         # alpha shape: (batch_size,query_len,embed_dim)
@@ -66,17 +67,15 @@ class RelativeMultiheadAttention(nn.Module):
         return self.out_projection(alpha)
     
 
-    def _shift(self,pos_score:torch.Tensor)->torch.Tensor:
-        """Shift mechanism"""
-        batch_size, num_heads, seq_length1, seq_length2 = pos_score.size()
-        
-        zeros            = pos_score.new_zeros(batch_size, num_heads, seq_length1, 1)
-        padded_pos_score = torch.cat([zeros, pos_score], dim=-1)
-        padded_pos_score = padded_pos_score.view(batch_size, num_heads, seq_length2 + 1, seq_length1)
-        pos_score        = padded_pos_score[:, :, 1:].view_as(pos_score)
+    def _rel_shift(self, x: torch.Tensor, zero_upper: bool = False):
 
-        return pos_score
-
+        x_padded = F.pad(x, [1, 0])  # step 1
+        x_padded = x_padded.view(x.size(0), x.size(1), x.size(3) + 1, x.size(2))  # step 2
+        x = x_padded[:, :, 1:].view_as(x)  # step 3
+        if zero_upper:
+            ones = torch.ones((x.size(2), x.size(3))).unsqueeze(0).unsqueeze(0)
+            x = x * torch.tril(ones.to(x.device), x.size(3) - x.size(2))  # step 4
+        return x
 
 
 
