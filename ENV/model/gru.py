@@ -5,6 +5,14 @@ import torch.nn as nn
 class GRUGate(nn.Module):
     def __init__(self, input_dim: int, bg: float = 0.0):
         super(GRUGate, self).__init__()
+        """
+        Overview:
+            Init GRU
+        Arguments:
+            - input_dim: (`int`): input dimension.
+            - bg: (`float`): bias
+
+        """
 
         self.Wr = nn.Linear(input_dim, input_dim, bias=False)
         self.Ur = nn.Linear(input_dim, input_dim, bias=False)
@@ -22,6 +30,14 @@ class GRUGate(nn.Module):
         nn.init.xavier_uniform_(self.Ug.weight)
 
     def forward(self, x: torch.Tensor, y: torch.Tensor):
+        """
+        Overview:
+            Forward method
+        Arguments:
+            - x: (`torch.Tensor`): input.
+            - y: ('torch.Tensor`): hidden input.
+        Return:
+        """
 
         r = nn.Sigmoid()(self.Wr(y) + self.Ur(x))
         z = nn.Sigmoid()(self.Wz(y) + self.Uz(x) - self.bg)

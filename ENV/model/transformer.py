@@ -14,6 +14,16 @@ class SinusoidalPE(nn.Module):
         self.register_buffer('inv_freqs', inv_freqs)
 
     def forward(self, seq_len):
+        """
+        Overview:
+            Compute positional embedding
+
+        Arguments:
+            - seq_len: (`int`): sequence length.
+
+        Returns:
+            - pos_embedding: (:obj:`torch.Tensor`): positional embedding. Shape (seq_len, 1, embedding_dim)
+        """
         seq            = torch.arange(int(seq_len) - 1, -1, -1.)
         sinusoidal_inp = seq.view(-1,1) * self.inv_freqs.view(1,-1)
         pos_emb        = torch.cat((sinusoidal_inp.sin(), sinusoidal_inp.cos()), dim = -1)
@@ -80,7 +90,14 @@ class GatedTransformerXL(nn.Module):
     def reset_memory(self, 
                      batch_size: Optional[int] = None, 
                      state: Optional[torch.Tensor] = None):
+        """
+        Overview:
+            Clear or set the memory of GTrXL.
 
+        Arguments:
+            - batch_size (:obj:`Optional[int]`): batch size
+            - state (:obj:`Optional[torch.Tensor]`): input memory. Shape is (layer_num, memory_len, bs, embedding_dim).
+        """
         self.memory = Memory(memory_len=self.memory_length, num_blocks=self.num_blocks, embedding_dim=self.embed_dim)
         if batch_size is not None:
             self.memory = Memory(self.memory_length, batch_size, self.embed_dim, self.num_blocks)
@@ -88,6 +105,16 @@ class GatedTransformerXL(nn.Module):
             self.memory.init(state)
 
     def forward(self, h:torch.Tensor):
+        """
+        Overview:
+            GTrXL forward pass.
+
+        Arguments:
+            - h (:obj:`torch.Tensor`): input tensor. Shape (seq_len, bs, input_size).
+
+        Returns:
+            - x (:obj:`torch.Tensor`): transformer output of shape (seq_len, bs, embedding_size).
+        """
 
         h = torch.transpose(h,1,0) # (batch_size, cur_seq, input_dim) -> (cur_seq, batch_size, input_dim)
         # Feed embedding layer and activate

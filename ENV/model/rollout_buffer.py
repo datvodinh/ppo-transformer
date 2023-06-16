@@ -39,6 +39,14 @@ class RolloutBuffer:
     def cal_advantages(self,
                        gamma:float,
                        gae_lambda:float):
+        """
+        Overview:
+            Calculate GAE.
+
+        Arguments:
+            - gamma: (`float`): gamma discount.
+            - gae_lambda: (`float`): gae_lambda discount.
+        """
 
         self.batch["advantages"] = torch.zeros_like(self.batch["rewards"])
         last_advantage           = 0
@@ -53,10 +61,18 @@ class RolloutBuffer:
             self.batch["advantages"][t] = last_advantage
             last_value                  = self.batch["values"][t]
 
-        return self.batch["advantages"]
-
     def mini_batch_loader(self,mini_batch_size:int):
-        """Return the dictionary of the mini batch data."""
+        """
+        Overview:
+            Mini batch data generator.
+
+        Arguments:
+            - mini_batch_size: (`int`): size of mini batch.
+            
+        Yield:
+            - mini-batch: (`dict`): dictionary contain the training data.
+        
+        """
         # Prepare indices (shuffle)
         batch_size = len(self.batch["actions"])
         indices    = torch.randperm(batch_size)

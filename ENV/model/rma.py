@@ -8,6 +8,12 @@ class RelativeMultiheadAttention(nn.Module):
     def __init__(self,
                  embed_dim:int,
                  num_heads:int) -> None:
+        """Overview:
+            Init AttentionXL.
+        Arguments:
+            - embed_dim (:obj:`int`): dimension of embedding
+            - num_heads (:obj:`int`): number of heads for multihead attention
+        """
 
         super(RelativeMultiheadAttention,self).__init__()
         self.embed_dim  = embed_dim
@@ -34,6 +40,20 @@ class RelativeMultiheadAttention(nn.Module):
                 value: torch.Tensor,
                 pos_embedding: torch.Tensor,
                 mask: None)->torch.Tensor:
+        """Overview:
+            Compute Relative Multi-head Attention.
+
+        Arguments:
+            - query (`torch.Tensor`): attention input of shape (cur_seq, bs, input_dim)
+            - key (`torch.Tensor`): attention input of shape (full_seq, bs, input_dim)
+            - value (`torch.Tensor`): attention input of shape (full_seq, bs, input_dim)
+            - pos_embedding (`torch.Tensor`): positional embedding of shape (full_seq, 1, full_seq)
+            - mask (`Optional[torch.Tensor|None]`): attention mask of shape (cur_seq, full_seq, 1)
+            - full_seq = prev_seq + cur_seq
+
+        Returns:
+            - alpha (`torch.Tensor`): attention output of shape (cur_seq, bs, input_dim)
+        """
         
         # key shape: (key_len,batch_size,embed_size)
         # query shape: (query_len,batch_size,embed_size)
@@ -60,7 +80,22 @@ class RelativeMultiheadAttention(nn.Module):
     
 
     def _rel_shift(self, x: torch.Tensor, zero_upper: bool = False):
+        """
+        Overview:
+            Relatively shift the attention score matrix.
 
+        Example:
+            a00 a01 a02      0 a00 a01 a02       0  a00 a01      a02  0  a10     a02  0   0
+            a10 a11 a12  =>  0 a10 a11 a12  =>  a02  0  a10  =>  a11 a12  0  =>  a11 a12  0
+            a20 a21 a22      0 a20 a21 a22      a11 a12  0       a20 a21 a22     a20 a21 a22
+
+        Arguments:
+            - x (`torch.Tensor`): input tensor of shape (cur_seq, full_seq, bs, head_num).
+            - zero_upper (`bool`): if True set the upper-right triangle to zero.
+            
+        Returns:
+            - x (`torch.Tensor`): input after relative shift. Shape (cur_seq, full_seq, bs, head_num).
+        """
         x_padded = F.pad(x, [1, 0])  # step 1
         x_padded = x_padded.view(x.size(0), x.size(1), x.size(3) + 1, x.size(2))  # step 2
         x = x_padded[:, :, 1:].view_as(x)  # step 3

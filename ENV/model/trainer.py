@@ -24,7 +24,26 @@ class Trainer:
         self.agent         = Agent(self.env,self.model,config)
     
     def _cal_loss(self,value,value_new,entropy,log_prob,log_prob_new,advantage):
-        """Calculate Total Loss"""
+        """
+        Overview:
+            Calculate Total Loss
+
+        Arguments:
+            - value: (`torch.Tensor`):  
+            - value_new: (`torch.Tensor`): 
+            - entropy: (`torch.Tensor`): 
+            - log_prob: (`torch.Tensor`): 
+            - log_prob_new: (`torch.Tensor`): 
+            - advantage: (`torch.Tensor`):  
+
+        Return:
+            - actor_loss: (`torch.Tensor`): 
+            - critic_loss: (`torch.Tensor`): 
+            - total_loss: (`torch.Tensor`): 
+
+        
+        """
+        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
 

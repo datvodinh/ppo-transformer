@@ -20,6 +20,15 @@ class Memory:
         self.init_memory(memory)
 
     def init_memory(self, memory: Optional[torch.Tensor] = None):
+        """
+        Overview:
+            Init memory with an input list of tensors or create it automatically given its dimensions.
+        
+        Arguments:
+            - memory: (:obj:`Optional[torch.Tensor]`): memory input.
+            Shape is (layer_num, memory_len, bs, embedding_dim).
+            memory_len is length of memory, bs is batch size and embedding_dim is the dimension of embedding.
+        """
 
         if memory is not None:
             self.memory = memory
@@ -31,6 +40,25 @@ class Memory:
             )
 
     def update(self, hidden_state: List[torch.Tensor]):
+        """
+        Overview:
+            Update the memory given a sequence of hidden states.
+        Example for single layer:
+
+            memory_len=3, hidden_size_len=2, bs=3
+
+                m00 m01 m02      h00 h01 h02              m20 m21 m22
+            m = m10 m11 m12  h = h10 h11 h12  => new_m =  h00 h01 h02
+                m20 m21 m22                               h10 h11 h12
+
+        Arguments:
+            - hidden_state: (:obj:`List[torch.Tensor]`): hidden states to update the memory.
+            - Shape is (cur_seq, bs, embedding_dim) for each layer. cur_seq is length of sequence.
+
+        Returns:
+            - memory: (:obj:`Optional[torch.Tensor]`): output memory.
+            - Shape is (layer_num, memory_len, bs, embedding_dim).
+        """
 
         if self.memory is None or hidden_state is None:
             raise ValueError('Failed to update memory! Memory would be None')
@@ -49,4 +77,12 @@ class Memory:
         return new_memory
 
     def get(self):
+        """
+        Overview:
+            Memory getter method.
+
+        Returns:
+            - memory: (:obj:`Optional[torch.Tensor]`): output memory.
+            Shape is (layer_num, memory_len, bs, embedding_dim).
+        """
         return self.memory

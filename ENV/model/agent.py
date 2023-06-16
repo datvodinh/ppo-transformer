@@ -17,7 +17,18 @@ class Agent(RolloutBuffer):
         # self.memory             = Memory(memory_len=64,batch_size=1,embedding_dim=self.embed_dim,num_blocks=self.num_blocks)
         self.model.transformer.reset_memory(batch_size=1)
     def play(self,state,per):
-        
+        """
+        Overview:
+            Agent's play function
+
+        Arguments:
+            - state: (`np.array`): state
+            - per: (`List`): per file
+
+        Returns:
+            - action: (`int`): Agent's action
+            - per: (`List`): per file
+        """
         with torch.no_grad():
             policy,value = self.model(torch.tensor(state.reshape(1,1,-1),dtype=torch.float32))
             policy       = policy.squeeze().numpy()
@@ -50,12 +61,29 @@ class Agent(RolloutBuffer):
     
     @staticmethod
     def stable_softmax(x):
+        """
+        Overview:
+            Return the stable softmax
+
+        Arguments:
+            - x: (`Optional[torch.Tensor]`): input Logits.
+
+        Returns:
+            - softmax: (`Optional[torch.Tensor]`): stable softmax.
+        """
         max_val           = np.max(x)
         scaled_values     = x - max_val
         exp_scaled_values = np.exp(scaled_values)
         softmax           = exp_scaled_values / np.sum(exp_scaled_values)
         return softmax
     
-    def run(self,num_games)->float:
-        """Run custom environment and return win rate"""
+    def run(self,num_games:int)->float:
+        """
+        Overview:
+            Run custom environment and return win rate.
+
+        Arguments:
+            - num_games: (`int`): number of games.
+            
+        """
         return self.env.run(self.play,num_games,np.array([0.]),1)[0] / num_games
