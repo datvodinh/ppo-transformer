@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from src.rma import *
-from src.gru import *
-from src.memory import *
+from model.rma import *
+from model.gru import *
+from model.memory import *
 
 class SinusoidalPE(nn.Module):
     """Relative positional encoding"""
@@ -14,10 +14,10 @@ class SinusoidalPE(nn.Module):
         self.register_buffer('inv_freqs', inv_freqs)
 
     def forward(self, seq_len):
-        seq            = torch.arange(seq_len - 1, -1, -1.)
+        seq            = torch.arange(int(seq_len) - 1, -1, -1.)
         sinusoidal_inp = seq.view(-1,1) * self.inv_freqs.view(1,-1)
         pos_emb        = torch.cat((sinusoidal_inp.sin(), sinusoidal_inp.cos()), dim = -1)
-        return pos_emb
+        return pos_emb.unsqueeze(1)
 
 class TransformerBlock(nn.Module):
     """Transformer Block"""
@@ -81,9 +81,9 @@ class GatedTransformerXL(nn.Module):
                      batch_size: Optional[int] = None, 
                      state: Optional[torch.Tensor] = None):
 
-        self.memory = Memory(memory_len=self.memory_len, layer_num=self.layer_num, embedding_dim=self.embedding_dim)
+        self.memory = Memory(memory_len=self.memory_length, num_blocks=self.num_blocks, embedding_dim=self.embed_dim)
         if batch_size is not None:
-            self.memory = Memory(self.memory_len, batch_size, self.embedding_dim, self.layer_num)
+            self.memory = Memory(self.memory_length, batch_size, self.embed_dim, self.num_blocks)
         elif state is not None:
             self.memory.init(state)
 
@@ -94,10 +94,15 @@ class GatedTransformerXL(nn.Module):
         cur_seq, bs = h.shape[:2]
         memory = None if self.memory is None else self.memory.get()
 
+        if memory is None:
+            self.reset_memory(bs)  # (layer_num+1) x memory_len x batch_size x embedding_dim
+        elif memory.shape[-2] != bs or memory.shape[-1] != self.embed_dim:
+            self.reset_memory(bs)
+
         h = self.activation(self.linear_embedding(h))
         memory = self.memory.get()
         # Positional embedding
-        prev_seq = self.memory_len
+        prev_seq = self.memory_length
         full_seq = cur_seq + prev_seq
 
         if cur_seq in self.att_mask.keys():
@@ -114,8 +119,7 @@ class GatedTransformerXL(nn.Module):
         if cur_seq in self.pos_embedding_dict.keys():
             pos_embedding = self.pos_embedding_dict[cur_seq]
         else:
-            pos_ips = torch.arange(full_seq - 1, -1, -1.0, dtype=torch.float)  # full_seq
-            pos_embedding = self.pos_embedding(pos_ips.to(h.device))
+            pos_embedding = self.pos_embedding(full_seq)
             self.pos_embedding_dict[cur_seq] = pos_embedding
 
         hidden_state = [h]
@@ -128,9 +132,9 @@ class GatedTransformerXL(nn.Module):
                 pos_embedding=pos_embedding,
                 mask=attn_mask
             )  # cur_seq x bs x embedding_dim
-            hidden_state.append(out.clone())
+            hidden_state.append(out.detach().clone())
 
         self.memory.update(hidden_state)  # (layer_num+1) x memory_len x batch_size x embedding_dim
         out = torch.transpose(out, 1, 0)  #  (cur_seq, batch_size, input_dim) ->  (batch_size, cur_seq, input_dim)
-
+        
         return out

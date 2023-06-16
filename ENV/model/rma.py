@@ -35,35 +35,27 @@ class RelativeMultiheadAttention(nn.Module):
                 pos_embedding: torch.Tensor,
                 mask: None)->torch.Tensor:
         
-        # key shape: (batch_size,key_len,embed_size)
-        # query shape: (batch_size,query_len,embed_size)
-        # value shape: (batch_size,value_len,embed_size)
+        # key shape: (key_len,batch_size,embed_size)
+        # query shape: (query_len,batch_size,embed_size)
+        # value shape: (value_len,batch_size,embed_size)
+        batch_size = query.shape[1]
+        query_len,key_len,value_len = query.shape[0], key.shape[0], value.shape[0]
         
-        batch_size = query.shape[0]
+        queries = self.Queries(query).view(query_len,batch_size,self.num_heads,self.heads_dim)
+        keys    = self.Keys(key).view(key_len,batch_size,self.num_heads,self.heads_dim)
+        values  = self.Values(value).view(value_len,batch_size,self.num_heads,self.heads_dim)
+        R = self.Pos(pos_embedding).view(-1,self.num_heads,self.heads_dim)
 
-        query_len,key_len,value_len = query.shape[1], key.shape[1], value.shape[1]
-        
-        queries = self.Queries(query).view(batch_size,query_len,self.num_heads,self.heads_dim)
-        keys    = self.Keys(key).view(batch_size,key_len,self.num_heads,self.heads_dim)
-        values  = self.Values(value).view(batch_size,value_len,self.num_heads,self.heads_dim)
-        # keys shape: (batch_size,key_len,num_heads,head_dim)
-        # queries shape: (batch_size,query_len,num_heads,head_dim)
-        # values shape: (batch_size,value_len,num_heads,head_dim)
-        R = self.Pos(pos_embedding).view(batch_size,-1,self.num_heads,self.heads_dim)
-        # Relative counterpart R shape: (batch_size,key_len,num_heads,head_dim)
-
-        content_score  = torch.einsum("bqhd,bkhd->bhqk",[queries+self.U,keys])
-        position_score = torch.einsum("bqhd,bkhd->bhqk",[queries+self.V,R])
+        content_score  = torch.einsum("qbhd,kbhd->bhqk",[queries+self.U,keys])
+        position_score = torch.einsum("qbhd,khd->bhqk",[queries+self.V,R])
         position_score = self._rel_shift(position_score)
-
-        attention_score = (content_score + position_score) / self.d
-
+        attention_score = (content_score + position_score) / self.d # (batch_size,num_heads,query_len,key_len)
         if mask is not None:
-            attention_score = attention_score.masked_fill(mask==0,float("-inf"))
-
-        alpha = torch.einsum("bhqk,bvhd->bqhd",[attention_score,values]).view(batch_size,-1,self.embed_dim)
-        # alpha shape: (batch_size,query_len,embed_dim)
-
+            mask = mask.permute(2, 0, 1).unsqueeze(1)  # 1 x 1 x cur_seq x full_seq
+            assert mask.shape[2:] == attention_score.shape[2:]  # check shape of mask
+            attention_score = attention_score.masked_fill(mask,float("-inf"))
+        alpha = torch.einsum("bhqk,vbhd->qbhd",[attention_score,values]).view(-1,batch_size,self.embed_dim)
+        # alpha shape: (query_len,batch_size,embed_dim)
         return self.out_projection(alpha)
     
 

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from src.transformer import GatedTransformerXL
+from model.transformer import GatedTransformerXL
 
 class PPOTransformerModel(nn.Module):
     def __init__(self,config,state_size,action_size):
@@ -32,18 +32,18 @@ class PPOTransformerModel(nn.Module):
         torch.nn.init.constant_(layer.bias, bias_const)
         return layer
     
-    def forward(self,state,memories, mask, memory_indices):
+    def forward(self,state):
         
-        out        = self.fc(state)
-        out,memory = self.transformer(out,memories, mask, memory_indices)
-        policy     = self.policy(out)
-        value      = self.value(out)
-
-        return policy,value,memory
-    
-    def get_policy(self,state,memories, mask, memory_indices):
         out    = self.fc(state)
-        out,_  = self.transformer(out,memories, mask, memory_indices)
+        out    = self.transformer(out)
+        policy = self.policy(out)
+        value  = self.value(out)
+
+        return policy,value
+    
+    def get_policy(self,state):
+        out    = self.fc(state)
+        out    = self.transformer(out)
         policy = self.policy(out)
         return policy
     
