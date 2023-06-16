@@ -89,6 +89,7 @@ class Trainer:
                             critic_loss = critic_loss,
                             total_loss  = total_loss
                         )
+                        step+=1
             
             self.agent.reset_data()
 
