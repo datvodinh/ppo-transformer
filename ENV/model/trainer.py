@@ -56,40 +56,41 @@ class Trainer:
                 log_prob_old    = categorical_old.log_prob(self.agent.batch["actions"].view(1,-1)).squeeze(0)
                 self.agent.batch["probs"] = log_prob_old
             
-            mini_batch_loader = self.agent.mini_batch_loader(self.config["batch_size"])
-            for mini_batch in mini_batch_loader:
-                pol_new,val_new = self.model(mini_batch["states"].unsqueeze(1))
-                val_new         = val_new.squeeze(1)
-                categorical_new = Categorical(logits=pol_new.masked_fill(mini_batch["action_mask"]==0,float('-inf')))
-                log_prob_new    = categorical_new.log_prob(mini_batch["actions"].view(1,-1)).squeeze(0)
-                entropy         = categorical_new.entropy().mean()
+            for _ in range(self.config["num_epochs"]):
+                mini_batch_loader = self.agent.mini_batch_loader(self.config["batch_size"])
+                for mini_batch in mini_batch_loader:
+                    pol_new,val_new = self.model(mini_batch["states"].unsqueeze(1))
+                    val_new         = val_new.squeeze(1)
+                    categorical_new = Categorical(logits=pol_new.masked_fill(mini_batch["action_mask"]==0,float('-inf')))
+                    log_prob_new    = categorical_new.log_prob(mini_batch["actions"].view(1,-1)).squeeze(0)
+                    entropy         = categorical_new.entropy().mean()
 
-                actor_loss, critic_loss, total_loss = self._cal_loss(
-                    value        = mini_batch["values"],
-                    value_new    = val_new,
-                    entropy      = entropy,
-                    log_prob     = log_prob_old,
-                    log_prob_new = log_prob_new,
-                    advantage    = mini_batch["advantages"]
-                )
+                    actor_loss, critic_loss, total_loss = self._cal_loss(
+                        value        = mini_batch["values"],
+                        value_new    = val_new,
+                        entropy      = entropy,
+                        log_prob     = log_prob_old,
+                        log_prob_new = log_prob_new,
+                        advantage    = mini_batch["advantages"]
+                    )
 
-                if not torch.isnan(total_loss).any():
-                    self.optimizer.zero_grad()
-                    total_loss.backward()
-                    nn.utils.clip_grad_norm_(self.model.parameters(),max_norm=self.config["max_grad_norm"])
-                    self.optimizer.step()
-                if write_data:
-                    with torch.no_grad():
-                        self.writer.add(
-                            step        = step,
-                            win_rate    = win_rate,
-                            reward      = self.agent.batch["rewards"].mean(),
-                            entropy     = entropy,
-                            actor_loss  = actor_loss,
-                            critic_loss = critic_loss,
-                            total_loss  = total_loss
-                        )
-                        step+=1
+                    if not torch.isnan(total_loss).any():
+                        self.optimizer.zero_grad()
+                        total_loss.backward()
+                        nn.utils.clip_grad_norm_(self.model.parameters(),max_norm=self.config["max_grad_norm"])
+                        self.optimizer.step()
+                    if write_data:
+                        with torch.no_grad():
+                            self.writer.add(
+                                step        = step,
+                                win_rate    = win_rate,
+                                reward      = self.agent.batch["rewards"].mean(),
+                                entropy     = entropy,
+                                actor_loss  = actor_loss,
+                                critic_loss = critic_loss,
+                                total_loss  = total_loss
+                            )
+                            step+=1
             
             self.agent.reset_data()
 
