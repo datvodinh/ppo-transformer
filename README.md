@@ -1,5 +1,5 @@
 # ppo-transformer
-
+```
 ENV\MODEL
 │   agent.py
 │   gru.py
@@ -10,3 +10,5 @@ ENV\MODEL
 │   trainer.py
 │   transformer.py
 │   writer.py
+│*
+```
