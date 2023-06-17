@@ -1,8 +1,9 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from model.rollout_buffer import RolloutBuffer
-from model.memory import Memory
+from model2.rollout_buffer import RolloutBuffer
+from model2.memory import Memory
+from torch.distributions import Categorical
 class Agent(RolloutBuffer):
     """Agent"""
     def __init__(self,env,model,config):
@@ -32,10 +33,11 @@ class Agent(RolloutBuffer):
         with torch.no_grad():
             tensor_state = torch.tensor(state.reshape(1,1,-1),dtype=torch.float32)
             policy,value = self.model(tensor_state)
-            policy       = policy.squeeze().numpy()
-            list_action  = self.env.getValidActions(state)
-            actions      = np.where(list_action==1)[0]
-            action       = np.random.choice(actions,p = self.stable_softmax(policy[actions]))
+            policy       = policy.squeeze()
+            list_action  = torch.tensor(self.env.getValidActions(state),dtype=torch.float32)
+            categorical  = Categorical(logits=policy.masked_fill(list_action==0,float('-inf')))
+            action       = categorical.sample().item()
+            log_prob     = categorical.log_prob(torch.tensor([action]).view(1,-1)).squeeze()
             # print(action)
 
             if self.env.getReward(state)==-1:
@@ -45,7 +47,8 @@ class Agent(RolloutBuffer):
                               value        = value.item(),
                               reward       = 0.0,
                               done         = 0,
-                              valid_action = list_action
+                              valid_action = list_action,
+                              prob         = log_prob
                               )
             else:
                 self.step_current_game = 0 #reset step
@@ -55,7 +58,8 @@ class Agent(RolloutBuffer):
                               value        = value.item(),
                               reward       = self.env.getReward(state) * 1.0,
                               done         = 1,
-                              valid_action = list_action
+                              valid_action = list_action,
+                              prob         = log_prob
                               )
         
         return action,per 

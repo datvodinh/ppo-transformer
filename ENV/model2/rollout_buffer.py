@@ -14,11 +14,12 @@ class RolloutBuffer:
             "rewards"    : [],
         }
 
-    def add_data(self,state,action,value,reward,done,valid_action):
+    def add_data(self,state,action,value,reward,done,valid_action,prob):
         """Add data to rollout buffer"""
         self.batch["states"].append(state)
         self.batch["actions"].append(action)
         self.batch["values"].append(value)
+        self.batch["probs"].append(prob)
         self.batch["dones"].append(done)
         self.batch["action_mask"].append(valid_action)
         self.batch["rewards"].append(reward)
@@ -48,7 +49,7 @@ class RolloutBuffer:
             - gae_lambda: (`float`): gae_lambda discount.
         """
 
-        self.batch["advantages"] = torch.zeros_like(self.batch["rewards"])
+        self.batch["advantages"] = torch.zeros(len(self.batch["rewards"]))
         last_advantage           = 0
         last_value               = self.batch["values"][-1]
 
@@ -67,25 +68,27 @@ class RolloutBuffer:
             Mini batch data generator.
 
         Arguments:
-            - mini_batch_size: (`int`): size of mini batch.
+            - config: (`dict`): config.
             
         Yield:
             - mini-batch: (`dict`): dictionary contain the training data.
         
         """
-        idx = torch.randint(len(self.data["action"]) - config["memory_length"],size=(config["batch_size"],))
+        idx = torch.randint(len(self.batch["actions"]) - config["memory_length"],size=(config["batch_size"],))
         while True:
             mini_batch          = {}
             for key,value in self.batch.items():
                 mini_batch[key] = torch.stack([value[i:i + config["memory_length"]] for i in idx])
-                yield mini_batch
-                print(key,mini_batch[key].shape)
+                if key!="states":
+                    mini_batch[key] = mini_batch[key].reshape(config["memory_length"]*config["batch_size"],-1).squeeze()
+            yield mini_batch
+                
 
     def to_tensor(self):
         """Turn data into tensor"""
         for key,value in self.batch.items():
             if not torch.is_tensor(value):
-                try:
+                if not torch.is_tensor(value[0]):
                     self.batch[key] = torch.tensor(np.array(value),dtype=torch.float32)
-                except:
-                    print(key,value)
+                else:
+                    self.batch[key] = torch.stack(value).float()

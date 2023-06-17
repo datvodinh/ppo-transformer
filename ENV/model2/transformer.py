@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from model.rma import *
-from model.gru import *
-from model.memory import *
+from model2.rma import *
+from model2.gru import *
+from model2.memory import *
 
 class SinusoidalPE(nn.Module):
     """Relative positional encoding"""
@@ -127,6 +127,7 @@ class GatedTransformerXL(nn.Module):
             self.reset_memory(bs)
 
         h = self.activation(self.linear_embedding(h))
+        
         memory = self.memory.get()
         # Positional embedding
         prev_seq = self.memory_length

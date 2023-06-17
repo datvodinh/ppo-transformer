@@ -6,9 +6,9 @@ import time
 import os
 
 from setup import make
-from model.model import PPOTransformerModel
-from model.agent import Agent
-from model.writer import Writer
+from model2.model import PPOTransformerModel
+from model2.agent import Agent
+from model2.writer import Writer
 
 class Trainer:
     """Train the model"""
@@ -68,19 +68,14 @@ class Trainer:
             win_rate = self.agent.run(num_games=self.config["num_game_per_batch"])
             self.agent.to_tensor()
             self.agent.cal_advantages(self.config["gamma"],self.config["gae_lambda"])
-
-            with torch.no_grad():
-                policy          = self.model.get_policy(self.agent.batch["states"])
-                categorical_old = Categorical(logits=policy.masked_fill(self.agent.batch["action_mask"]==0,float('-inf')))
-                log_prob_old    = categorical_old.log_prob(self.agent.batch["actions"].view(1,-1)).squeeze(0)
-                self.agent.batch["probs"] = log_prob_old
             
             for _ in range(self.config["num_epochs"]):
-                mini_batch_loader = self.agent.mini_batch_loader(self.config["batch_size"])
+                mini_batch_loader = self.agent.mini_batch_loader(self.config)
                 for _ in range(self.config["n_mini_batch"]):
                     mini_batch      = next(mini_batch_loader)
                     pol_new,val_new = self.model(mini_batch["states"])
                     val_new         = val_new.squeeze(1)
+                    # print(pol_new, mini_batch["action_mask"])
                     categorical_new = Categorical(logits=pol_new.masked_fill(mini_batch["action_mask"]==0,float('-inf')))
                     log_prob_new    = categorical_new.log_prob(mini_batch["actions"].view(1,-1)).squeeze(0)
                     entropy         = categorical_new.entropy().mean()
