@@ -88,7 +88,7 @@ class Trainer:
                         value        = mini_batch["values"],
                         value_new    = val_new,
                         entropy      = entropy,
-                        log_prob     = log_prob_old,
+                        log_prob     = mini_batch["probs"],
                         log_prob_new = log_prob_new,
                         advantage    = mini_batch["advantages"]
                     )
