@@ -39,7 +39,6 @@ class Agent(RolloutBuffer):
             # print(action)
 
             if self.env.getReward(state)==-1:
-                self.model.transformer.memory.update(tensor_state)
                 self.step_current_game += 1
                 self.add_data(state        = state,
                               action       = action,
