@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from model2.transformer import GatedTransformerXL
+from model_v2.transformer import GatedTransformerXL
 
 class PPOTransformerModel(nn.Module):
     def __init__(self,config,state_size,action_size):

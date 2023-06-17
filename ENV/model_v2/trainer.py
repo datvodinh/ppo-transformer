@@ -6,9 +6,9 @@ import time
 import os
 
 from setup import make
-from model2.model import PPOTransformerModel
-from model2.agent import Agent
-from model2.writer import Writer
+from model_v2.model import PPOTransformerModel
+from model_v2.agent import Agent
+from model_v2.writer import Writer
 
 class Trainer:
     """Train the model"""

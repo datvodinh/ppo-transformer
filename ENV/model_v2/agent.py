@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from model2.rollout_buffer import RolloutBuffer
-from model2.memory import Memory
+from model_v2.rollout_buffer import RolloutBuffer
+from model_v2.memory import Memory
 from torch.distributions import Categorical
 class Agent(RolloutBuffer):
     """Agent"""
@@ -34,10 +34,16 @@ class Agent(RolloutBuffer):
             tensor_state = torch.tensor(state.reshape(1,1,-1),dtype=torch.float32)
             policy,value = self.model(tensor_state)
             policy       = policy.squeeze()
-            list_action  = torch.tensor(self.env.getValidActions(state),dtype=torch.float32)
-            categorical  = Categorical(logits=policy.masked_fill(list_action==0,float('-inf')))
+            list_action  = self.env.getValidActions(state)
+            actions  = torch.tensor(list_action,dtype=torch.float32)
+            categorical  = Categorical(logits=policy.masked_fill(actions==0,float('-inf')))
             action       = categorical.sample().item()
+            if actions[action] != 1:
+                action   = np.random.choice(np.where(list_action==1)[0])
+
             log_prob     = categorical.log_prob(torch.tensor([action]).view(1,-1)).squeeze()
+            
+
             # print(action)
 
             if self.env.getReward(state)==-1:
