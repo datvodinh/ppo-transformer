@@ -87,6 +87,7 @@ class PPOTransformerModel(nn.Module):
         """
         out    = self.fc(state)
         out    = self.transformer(out)
+        out    = out.squeeze(1)
         policy = self.policy(out)
         return policy
     
