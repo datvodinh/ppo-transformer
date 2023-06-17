@@ -67,13 +67,10 @@ class PPOTransformerModel(nn.Module):
         """
         
         out    = self.fc(state)
-        print("fc",torch.isnan(out).any())
         out    = self.transformer(out)
-        print("transformer",torch.isnan(out).any())
         B,L,S  = out.shape
         out    = out.reshape(B*L,S)
         policy = self.policy(out)
-        print("policy",torch.isnan(policy).any())
         value  = self.value(out)
 
         return policy,value
