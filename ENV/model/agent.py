@@ -89,5 +89,5 @@ class Agent(RolloutBuffer):
         """
         
         win_rate =  self.env.run(self.play,num_games,np.array([0.]),1)[0] / num_games
-        print(num_games,win_rate)
+        # print(num_games,win_rate)
         return win_rate
