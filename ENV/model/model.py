@@ -62,12 +62,13 @@ class PPOTransformerModel(nn.Module):
             - state: (torch.Tensor): state with shape (batch_size, len_seq, state_len)
 
         Return:
-            - policy: (torch.Tensor): policy with shape (1,1,num_action)
-            - value: (torch.Tensor): value with shape (1,1,1)
+            - policy: (torch.Tensor): policy with shape (batch_size,num_action)
+            - value: (torch.Tensor): value with shape (batch_size,1)
         """
         
         out    = self.fc(state)
         out    = self.transformer(out)
+        out    = out.squeeze(1)
         policy = self.policy(out)
         value  = self.value(out)
 
