@@ -43,6 +43,8 @@ class Trainer:
 
         
         """
+        
+        returns         = value + advantage
         advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
@@ -54,7 +56,7 @@ class Trainer:
                         ).mean()
 
         value_clipped   = value + torch.clamp(value_new - value, -self.config["value_clip"], self.config["value_clip"])
-        returns         = value + advantage
+        
         critic_loss     = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2).mean()
         total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
         
