@@ -14,6 +14,7 @@ class Agent(RolloutBuffer):
         self.memory_length      = config["memory_length"]
         self.num_blocks         = config["num_blocks"]
         self.embed_dim          = config["embed_dim"]
+        self.reward             = config["rewards"]
         self.step_current_game  = 0
         # self.memory             = Memory(memory_len=64,batch_size=1,embedding_dim=self.embed_dim,num_blocks=self.num_blocks)
         self.model.transformer_pol.reset_memory(batch_size=1)
@@ -64,7 +65,7 @@ class Agent(RolloutBuffer):
                 self.add_data(state        = state,
                               action       = action,
                               value        = value.item(),
-                              reward       = self.env.getReward(state) * 1.0,
+                              reward       = self.reward[int(self.env.getReward(state))] * 1.0,
                               done         = 1,
                               valid_action = list_action,
                               prob         = log_prob
