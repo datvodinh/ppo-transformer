@@ -74,6 +74,9 @@ class RelativeMultiheadAttention(nn.Module):
             mask = mask.permute(2, 0, 1).unsqueeze(1)  # 1 x 1 x cur_seq x full_seq
             assert mask.shape[2:] == attention_score.shape[2:]  # check shape of mask
             attention_score = attention_score.masked_fill(mask,float("-inf"))
+
+        attention_score = torch.softmax(attention_score,dim=-1)
+        
         alpha = torch.einsum("bhqk,vbhd->qbhd",[attention_score,values]).view(-1,batch_size,self.embed_dim)
         # alpha shape: (query_len,batch_size,embed_dim)
         return self.out_projection(alpha)
