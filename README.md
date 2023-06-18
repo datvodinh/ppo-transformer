@@ -23,5 +23,5 @@ Model_v2: seq length > 1 (=memory length)
 Model_v3: separate network (model v2)
 Model_v4: separate network (model)
 Model_v5: transformer policy only (model v3)
-Model_v6: retain memory between batch. 
+Model_v6: replace relu with gelu,  (model v5) 
 ```
