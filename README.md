@@ -24,4 +24,5 @@ Model_v3: separate network (model v2)
 Model_v4: separate network (model)
 Model_v5: transformer policy only (model v3)
 Model_v6: replace relu with gelu,  (model v5) 
+Model_v7: like model 6 and torch.compile but (model)
 ```

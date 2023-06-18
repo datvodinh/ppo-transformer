@@ -6,9 +6,9 @@ import time
 import os
 
 from setup import make
-from model.model import PPOTransformerModel
-from model.agent import Agent
-from model.writer import Writer
+from model_v7.model import PPOTransformerModel
+from model_v7.agent import Agent
+from model_v7.writer import Writer
 
 class Trainer:
     """Train the model"""
@@ -17,6 +17,7 @@ class Trainer:
         self.env           = make(game_name)
 
         self.model         = PPOTransformerModel(config,self.env.getStateSize(),self.env.getActionSize())
+        self.model         = torch.compile(self.model)
         self.optimizer     = torch.optim.AdamW(self.model.parameters(),lr=config['lr'])
         self.memory_length = config["memory_length"]
         if writer_path is not None:
