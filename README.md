@@ -18,11 +18,12 @@ ENV/model
 
 ```
 (...) mean inherit from.
-Model: seq length = 1
-Model_v2: seq length > 1 (=memory length)
-Model_v3: separate network (model v2)
-Model_v4: separate network (model)
-Model_v5: transformer policy only (model v3)
-Model_v6: replace relu with gelu,  (model v5) 
-Model_v7: like model 6 and torch.compile but (model)
+Model: seq length = 1 x
+Model_v2: seq length > 1 (=memory length) x
+Model_v3: separate network (model v2) x
+Model_v4: separate network (model) x
+Model_v5: transformer policy only (model v3) x
+Model_v6: replace relu with gelu,  (model v5)  
+Model_v7: like model 6 but (model)
+Model_v8: like model 6 but (model v2)
 ```
