@@ -6,9 +6,9 @@ import time
 import os
 
 from setup import make
-from model_v9.model import PPOTransformerModel
-from model_v9.agent import Agent
-from model_v9.writer import Writer
+from model_v10.model import PPOTransformerModel
+from model_v10.agent import Agent
+from model_v10.writer import Writer
 
 class Trainer:
     """Train the model"""
@@ -45,13 +45,12 @@ class Trainer:
         """
 
         returns         = value + advantage
-        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
+        # advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
-        print(ratios)
         Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
 
         actor_loss      = -torch.where(
-                            (Kl >= self.config["policy_kl_range"]) & (ratios >= 1),
+                            (Kl > self.config["policy_kl_range"]) & (ratios > 1),
                             ratios * advantage - self.config["policy_params"] * Kl,
                             ratios * advantage
                         )
@@ -73,7 +72,7 @@ class Trainer:
     def _padding(self,
                  t:torch.Tensor,
                  padding:torch.Tensor,
-                 value = 0):
+                 value = -1e20):
         """
         Overviews:
             Return tensor with padding for policy and value loss.

@@ -27,4 +27,5 @@ Model_v6: replace relu with gelu,  (model v5)
 Model_v7: like model 6 but (model)
 Model_v8: like model 6 but (model v2)
 Model_v9: sequence_length = max_eps_length, add dropout, many optimize
+model_v10: fix padding and normalization (modelv9)
 ```
