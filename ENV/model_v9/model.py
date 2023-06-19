@@ -53,7 +53,7 @@ class PPOTransformerModel(nn.Module):
         torch.nn.init.constant_(layer.bias, bias_const)
         return layer
     
-    def forward(self,state):
+    def forward(self,state,padding_mask=None):
         """
         Overview:
             Forward method.
@@ -67,28 +67,11 @@ class PPOTransformerModel(nn.Module):
         """
         
         out    = self.fc(state)
-        out    = self.transformer(out)
+        out    = self.transformer(out,padding_mask)
         B,L,S  = out.shape
         out    = out.reshape(B*L,S)
         policy = self.policy(out)
         value  = self.value(out)
 
         return policy,value
-    
-    def get_policy(self,state):
-        """
-        Overview:
-            Get Policy.
-            
-        Arguments:
-            - state: (torch.Tensor): state with shape (batch_size, len_seq, state_len)
 
-        Return:
-            - policy: (torch.Tensor): policy with shape (1,1,num_action)
-        """
-        out    = self.fc(state)
-        out    = self.transformer(out)
-        out    = out.squeeze(1)
-        policy = self.policy(out)
-        return policy
-    

@@ -49,9 +49,9 @@ class TransformerBlock(nn.Module):
             self.dropout = nn.Dropout(config["dropout"])
             
 
-    def forward(self,query,key,pos_embedding,mask=None):
+    def forward(self,query,key,pos_embedding,mask=None,padding_mask=None):
         norm_key = self.layer_norm1(key)
-        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,mask)
+        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,mask,padding_mask)
         Y        = nn.GELU()(self.dropout(Y))
         out      = self.gate1(query,Y)
         E        = self.fc(self.layer_norm2(out))
@@ -118,13 +118,16 @@ class GatedTransformerXL(nn.Module):
         elif state is not None:
             self.memory.init(state)
 
-    def forward(self, h:torch.Tensor):
+    def forward(self,
+                 h:torch.Tensor,
+                 padding_mask = None):
         """
         Overview:
             GTrXL forward pass.
 
         Arguments:
             - h (:obj:`torch.Tensor`): input tensor. Shape (seq_len, bs, input_size).
+            - padding_mask: (:obj:`torch.Tensor`): padding tensor. Shape ( bs, cur_seq, full_seq)
 
         Returns:
             - x (:obj:`torch.Tensor`): transformer output of shape (seq_len, bs, embedding_size).
@@ -175,7 +178,8 @@ class GatedTransformerXL(nn.Module):
                 query=out,
                 key=torch.cat([memory[i], out], dim=0),
                 pos_embedding=pos_embedding,
-                mask=attn_mask
+                mask=attn_mask,
+                padding_mask = padding_mask
             )  # cur_seq x bs x embedding_dim
             hidden_state.append(out.detach().clone())
 

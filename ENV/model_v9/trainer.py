@@ -75,12 +75,14 @@ class Trainer:
                  value = -1e20):
         """
         Overviews:
-            Return tensor with padding
+            Return tensor with padding for policy and value loss.
         Arguments:
             - t: (`torch.Tensor`): tensor
             - padding: (`torch.Tensor`): padding mask
         """
         return t.masked_fill(padding==0,value=float(str(value)))
+
+    
 
 
     def train(self,write_data=True):
@@ -96,9 +98,8 @@ class Trainer:
             
             for _ in range(self.config["num_epochs"]):
                 mini_batch_loader   = self.agent.rollout.mini_batch_loader(self.config)
-                for _ in range(self.config["n_mini_batch"]):
-                    mini_batch      = next(mini_batch_loader)
-                    pol_new,val_new = self.model(mini_batch["states"])
+                for mini_batch in mini_batch_loader:
+                    pol_new,val_new = self.model(mini_batch["states"],mini_batch["padding"])
                     val_new         = val_new.squeeze(1)
                     # print(pol_new, mini_batch["action_mask"])
                     B,M,A = mini_batch["action_mask"].shape
@@ -108,7 +109,7 @@ class Trainer:
 
                     actor_loss, critic_loss, total_loss = self._cal_loss(
                         value        = mini_batch["values"].reshape(-1),
-                        value_new    = val_new.reshape(-1),
+                        value_new    = val_new,
                         entropy      = entropy,
                         log_prob     = mini_batch["probs"].reshape(-1),
                         log_prob_new = log_prob_new,
