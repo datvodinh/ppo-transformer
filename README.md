@@ -26,4 +26,5 @@ Model_v5: transformer policy only (model v3) x
 Model_v6: replace relu with gelu,  (model v5)  
 Model_v7: like model 6 but (model)
 Model_v8: like model 6 but (model v2)
+Model_v9: sequence_length = max_eps_length, add dropout, many optimize
 ```
