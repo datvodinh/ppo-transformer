@@ -116,12 +116,12 @@ class Trainer:
                         advantage    = mini_batch["advantages"].reshape(-1),
                         padding      = mini_batch["padding"].reshape(-1)
                     )
-
-                    if not torch.isnan(total_loss).any():
-                        self.optimizer.zero_grad()
-                        total_loss.backward()
-                        nn.utils.clip_grad_norm_(self.model.parameters(),max_norm=self.config["max_grad_norm"])
-                        self.optimizer.step()
+                    with torch.autograd.set_detect_anomaly(True):
+                        if not torch.isnan(total_loss).any():
+                            self.optimizer.zero_grad(set_to_none=True)
+                            total_loss.backward()
+                            nn.utils.clip_grad_norm_(self.model.parameters(),max_norm=self.config["max_grad_norm"])
+                            self.optimizer.step()
                     if write_data:
                         with torch.no_grad():
                             self.writer.add(
