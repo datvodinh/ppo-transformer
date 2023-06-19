@@ -64,7 +64,7 @@ class Trainer:
         actor_loss      = self._padding(actor_loss,padding,value=0)
         critic_loss     = self._padding(critic_loss,padding,value=0)
         entropy         = self._padding(entropy,padding,value=0)
-        
+
         total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
 
         return actor_loss.mean(), critic_loss.mean(), total_loss.mean()
@@ -126,8 +126,8 @@ class Trainer:
                             self.writer.add(
                                 step        = step,
                                 win_rate    = win_rate,
-                                reward      = self.agent.batch["rewards"].mean(),
-                                entropy     = entropy,
+                                reward      = self.agent.rollout.batch["rewards"].mean(),
+                                entropy     = entropy.mean(),
                                 actor_loss  = actor_loss,
                                 critic_loss = critic_loss,
                                 total_loss  = total_loss
