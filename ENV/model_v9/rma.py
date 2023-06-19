@@ -93,6 +93,8 @@ class RelativeMultiheadAttention(nn.Module):
 
         alpha = torch.einsum("bhqk,vbhd->qbhd",[attention_score,values]).view(-1,batch_size,self.embed_dim)
         # alpha shape: (query_len,batch_size,embed_dim)
+        if torch.isnan(alpha).any():
+            print("RMA return NaN!", alpha)
         return self.dropout2(self.out_projection(alpha))
     
 

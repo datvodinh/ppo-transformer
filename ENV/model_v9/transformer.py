@@ -57,7 +57,8 @@ class TransformerBlock(nn.Module):
         E        = self.fc(self.layer_norm2(out))
         E        = self.dropout(E)
         out      = self.gate2(out,E)
-
+        if torch.isnan(out).any():
+            print("Transformer block return NaN!", out)
         return out
 
 
@@ -186,4 +187,6 @@ class GatedTransformerXL(nn.Module):
         self.memory.update(hidden_state)  # (layer_num+1) x memory_len x batch_size x embedding_dim
         out = torch.transpose(out, 1, 0)  #  (cur_seq, batch_size, input_dim) ->  (batch_size, cur_seq, input_dim)
         
+        if torch.isnan(out).any():
+            print("Transformer return NaN!", out)
         return self.dropout(out)
