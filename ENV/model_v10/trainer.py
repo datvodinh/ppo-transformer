@@ -116,7 +116,7 @@ class Trainer:
                         advantage    = mini_batch["advantages"].reshape(-1),
                         padding      = mini_batch["padding"].reshape(-1)
                     )
-                    with torch.autograd.set_detect_anomaly(True):
+                    with torch.autograd.set_detect_anomaly(self.config["set_detect_anomaly"]):
                         if not torch.isnan(total_loss).any():
                             self.optimizer.zero_grad(set_to_none=True)
                             total_loss.backward()
