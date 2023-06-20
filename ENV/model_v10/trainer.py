@@ -43,31 +43,38 @@ class Trainer:
 
         
         """
+        value           = self._padding(value,padding,value=-100)
+        value_new       = self._padding(value_new,padding,value=-100)
+        entropy         = self._padding(entropy,padding,value=-100)
+        log_prob        = self._padding(log_prob,padding,value=-100)
+        log_prob_new    = self._padding(log_prob_new,padding,value=-100)
+        advantage       = self._padding(advantage,padding,value=-100)
+
+        value           = value[value!=-100].detach()
+        value_new       = value_new[value_new!=-100]
+        entropy         = entropy[entropy!=-100]
+        log_prob        = log_prob[log_prob!=-100].detach()
+        log_prob_new    = log_prob_new[log_prob_new!=-100]
+        advantage       = advantage[advantage!=-100].detach()
 
         returns         = value + advantage
-        # advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
+        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
+
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
 
+        #Calculate 
         actor_loss      = -torch.where(
                             (Kl > self.config["policy_kl_range"]) & (ratios > 1),
                             ratios * advantage - self.config["policy_params"] * Kl,
                             ratios * advantage
                         )
-        
-        
-
         value_clipped   = value + torch.clamp(value_new - value, -self.config["value_clip"], self.config["value_clip"])
-        
         critic_loss     = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2)
 
         total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
 
-        total_loss      = self._padding(total_loss,padding,value=0)
-        actor_loss      = self._padding(actor_loss,padding,value=0)
-        critic_loss     = self._padding(critic_loss,padding,value=0)
-
-        return actor_loss.mean().detach(), critic_loss.mean().detach(), total_loss.mean()
+        return actor_loss.mean().detach(), critic_loss.mean().detach(), total_loss.mean(), entropy.mean()
     
     def _padding(self,
                  t:torch.Tensor,
@@ -107,7 +114,7 @@ class Trainer:
                     log_prob_new    = categorical_new.log_prob(mini_batch["actions"].view(1,-1)).squeeze(0)
                     entropy         = categorical_new.entropy()
 
-                    actor_loss, critic_loss, total_loss = self._cal_loss(
+                    actor_loss, critic_loss, total_loss,entropy = self._cal_loss(
                         value        = mini_batch["values"].reshape(-1),
                         value_new    = val_new,
                         entropy      = entropy,
