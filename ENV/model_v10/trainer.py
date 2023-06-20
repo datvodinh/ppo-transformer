@@ -61,13 +61,13 @@ class Trainer:
         
         critic_loss     = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2)
 
-        actor_loss      = self._padding(actor_loss,padding,value=0)
-        critic_loss     = self._padding(critic_loss,padding,value=0)
-        entropy         = self._padding(entropy,padding,value=0)
-
         total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
 
-        return actor_loss.mean(), critic_loss.mean(), total_loss.mean()
+        total_loss      = self._padding(total_loss,padding,value=0)
+        actor_loss      = self._padding(actor_loss,padding,value=0)
+        critic_loss     = self._padding(critic_loss,padding,value=0)
+
+        return actor_loss.mean().detach(), critic_loss.mean().detach(), total_loss.mean()
     
     def _padding(self,
                  t:torch.Tensor,
