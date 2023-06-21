@@ -28,11 +28,6 @@ class RelativeMultiheadAttention(nn.Module):
         self.Values     = nn.Linear(embed_dim,embed_dim)
         self.Pos        = nn.Linear(embed_dim,embed_dim,bias=False)
 
-        self.U = nn.Parameter(torch.Tensor(self.num_heads,self.heads_dim))
-        self.V = nn.Parameter(torch.Tensor(self.num_heads,self.heads_dim))
-        nn.init.xavier_uniform_(self.U)
-        nn.init.xavier_uniform_(self.V)
-
         self.out_projection = nn.Linear(embed_dim,embed_dim)
 
         if dropout is not None:
@@ -44,6 +39,8 @@ class RelativeMultiheadAttention(nn.Module):
                 key: torch.Tensor,
                 value: torch.Tensor,
                 pos_embedding: torch.Tensor,
+                U: torch.Tensor,
+                V: torch.Tensor,
                 mask: None,
                 padding_mask: None)->torch.Tensor:
         """Overview:
@@ -54,6 +51,8 @@ class RelativeMultiheadAttention(nn.Module):
             - key (`torch.Tensor`): attention input of shape (full_seq, bs, input_dim)
             - value (`torch.Tensor`): attention input of shape (full_seq, bs, input_dim)
             - pos_embedding (`torch.Tensor`): positional embedding of shape (full_seq, 1, full_seq)
+            - U (`torch.Tensor`): global content bias, shape (num_heads,heads_dim)
+            - V (`torch.Tensor`): global position bias, shape (num_heads,heads_dim)
             - mask (`Optional[torch.Tensor|None]`): attention mask of shape (cur_seq, full_seq, 1)
             - padding_mask (`Optional[torch.Tensor|None]`): attention mask of shape (bs,cur_seq, full_seq)
             - full_seq = prev_seq + cur_seq
@@ -73,8 +72,8 @@ class RelativeMultiheadAttention(nn.Module):
         values  = self.Values(value).view(value_len,batch_size,self.num_heads,self.heads_dim)
         R = self.Pos(pos_embedding).view(-1,self.num_heads,self.heads_dim)
 
-        content_score  = torch.einsum("qbhd,kbhd->qkbh",[queries+self.U,keys])
-        position_score = torch.einsum("qbhd,khd->qkbh",[queries+self.V,R])
+        content_score  = torch.einsum("qbhd,kbhd->qkbh",[queries+U,keys])
+        position_score = torch.einsum("qbhd,khd->qkbh",[queries+V,R])
         position_score = self._rel_shift(position_score)
         attention_score = (content_score + position_score) / self.d # (query_len,key_len,batch_size,num_heads)
         if mask is not None:

@@ -49,9 +49,9 @@ class TransformerBlock(nn.Module):
             self.dropout = nn.Dropout(config["dropout"])
             
 
-    def forward(self,query,key,pos_embedding,mask=None,padding_mask=None):
+    def forward(self,query,key,pos_embedding,U,V,mask=None,padding_mask=None):
         norm_key = self.layer_norm1(key)
-        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,mask,padding_mask)
+        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,U,V,mask,padding_mask)
         Y        = nn.GELU()(self.dropout(Y))
         out      = self.gate1(query,Y)
         E        = self.fc(self.layer_norm2(out))
@@ -76,6 +76,7 @@ class GatedTransformerXL(nn.Module):
         self.num_blocks        = config["num_blocks"]
         self.embed_dim         = config["embed_dim"]
         self.num_heads         = config["num_heads"]
+        self.heads_dim         = self.embed_dim // self.num_heads
         self.memory_length     = config["memory_length"]
         self.max_episode_steps = max_episode_steps
         self.activation        = nn.GELU()
@@ -99,6 +100,9 @@ class GatedTransformerXL(nn.Module):
             self.dropout = nn.Dropout(config["dropout"])
 
         self.history_memory = None
+        
+        self.U = nn.Parameter(torch.zeros(self.num_heads,self.heads_dim))
+        self.V = nn.Parameter(torch.zeros(self.num_heads,self.heads_dim))
 
     def reset_memory(self, 
                      batch_size: Optional[int] = None, 
@@ -183,6 +187,8 @@ class GatedTransformerXL(nn.Module):
                 query=out,
                 key=torch.cat([memory[i], out], dim=0),
                 pos_embedding=pos_embedding,
+                U=self.U,
+                V=self.V,
                 mask=attn_mask,
                 padding_mask = padding_mask
             )  # cur_seq x bs x embedding_dim
