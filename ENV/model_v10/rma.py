@@ -61,7 +61,7 @@ class RelativeMultiheadAttention(nn.Module):
         Returns:
             - alpha (`torch.Tensor`): attention output of shape (cur_seq, bs, input_dim)
         """
-        
+        # cur_seq, full_seq = query_len, key_len
         # key shape: (key_len,batch_size,embed_size)
         # query shape: (query_len,batch_size,embed_size)
         # value shape: (value_len,batch_size,embed_size)
@@ -73,32 +73,33 @@ class RelativeMultiheadAttention(nn.Module):
         values  = self.Values(value).view(value_len,batch_size,self.num_heads,self.heads_dim)
         R = self.Pos(pos_embedding).view(-1,self.num_heads,self.heads_dim)
 
-        content_score  = torch.einsum("qbhd,kbhd->bhqk",[queries+self.U,keys])
-        position_score = torch.einsum("qbhd,khd->bhqk",[queries+self.V,R])
+        content_score  = torch.einsum("qbhd,kbhd->qkbh",[queries+self.U,keys])
+        position_score = torch.einsum("qbhd,khd->qkbh",[queries+self.V,R])
         position_score = self._rel_shift(position_score)
-        attention_score = (content_score + position_score) / self.d # (batch_size,num_heads,query_len,key_len)
+        attention_score = (content_score + position_score) / self.d # (query_len,key_len,batch_size,num_heads)
         if mask is not None:
-            mask = mask.permute(2, 0, 1).unsqueeze(1)  # 1 x 1 x cur_seq x full_seq
-            assert mask.shape[2:] == attention_score.shape[2:]  # check shape of mask
-            attention_score = attention_score.masked_fill(mask,float("-1e20"))
+            mask = mask.unsqueeze(-1)  #  cur_seq x full_seq x 1 x 1
+            assert mask.shape[:2] == attention_score.shape[:2]  # check shape of mask
+            attention_score = attention_score.masked_fill(mask,float("-1e20")).type_as(attention_score)
         
         if padding_mask is not None:
-            padding_mask = self._padding_mask(padding_mask,query_len,key_len)
-            padding_mask = padding_mask.unsqueeze(1)
-            assert padding_mask.shape[2:] == attention_score.shape[2:]  # check shape of padding_mask
-            attention_score = attention_score.masked_fill(padding_mask==0,float("-1e20"))
+            padding_mask = self._padding_mask(padding_mask,query_len,key_len) # (batch_size,cur_seq, full_seq)
+            padding_mask = padding_mask.permute(1,2,0).unsqueeze(-1) # (cur_seq, full_seq,batch_size,,1)
+            assert padding_mask.shape[:2] == attention_score.shape[:2]  # check shape of padding_mask
+            attention_score = attention_score.masked_fill(padding_mask==0,float("-1e20")).type_as(attention_score)
             
-        attention_score = torch.softmax(attention_score,dim=-1)
+        attention_score = torch.softmax(attention_score,dim=1)
         attention_score = self.dropout1(attention_score)
 
-        alpha = torch.einsum("bhqk,vbhd->qbhd",[attention_score,values]).view(-1,batch_size,self.embed_dim)
+        alpha = torch.einsum("qkbh,vbhd->qbhd",[attention_score,values])
+        alpha = alpha.contiguous().view(alpha.size(0),alpha.size(1),self.embed_dim)
         # alpha shape: (query_len,batch_size,embed_dim)
         if torch.isnan(alpha).any():
             print("RMA return NaN!", alpha)
         return self.dropout2(self.out_projection(alpha))
     
 
-    def _rel_shift(self, x: torch.Tensor, zero_upper: bool = False):
+    def _rel_shift(self, x: torch.Tensor, zero_triu=False):
         """
         Overview:
             Relatively shift the attention score matrix.
@@ -115,12 +116,18 @@ class RelativeMultiheadAttention(nn.Module):
         Returns:
             - x (`torch.Tensor`): input after relative shift. Shape (cur_seq, full_seq, bs, head_num).
         """
-        x_padded = F.pad(x, [1, 0])  # step 1
-        x_padded = x_padded.view(x.size(0), x.size(1), x.size(3) + 1, x.size(2))  # step 2
-        x = x_padded[:, :, 1:].view_as(x)  # step 3
-        if zero_upper:
-            ones = torch.ones((x.size(2), x.size(3))).unsqueeze(0).unsqueeze(0)
-            x = x * torch.tril(ones.to(x.device), x.size(3) - x.size(2))  # step 4
+        zero_pad = torch.zeros((x.size(0), 1, *x.size()[2:]),
+                               device=x.device, dtype=x.dtype)
+        x_padded = torch.cat([zero_pad, x], dim=1)
+
+        x_padded = x_padded.view(x.size(1) + 1, x.size(0), *x.size()[2:])
+
+        x = x_padded[1:].view_as(x)
+
+        if zero_triu:
+            ones = torch.ones((x.size(0), x.size(1)))
+            x = x * torch.tril(ones, x.size(1) - x.size(0))[:,:,None,None]
+
         return x
     
     def _padding_mask(self,pad,seq_len,full_len):
@@ -128,11 +135,11 @@ class RelativeMultiheadAttention(nn.Module):
         Create a padding mask for attention based on the time step array.
 
         Args:
-            pad (torch.Tensor): Time step array tensor of shape (batch_size, max_episode_step),
+            pad (torch.Tensor): Time step array tensor of shape (batch_size, cur_seq),
                 where 1 represents a real time step and 0 represents padding.
 
         Returns:
-            torch.Tensor: Padding mask tensor of shape (batch_size,max_episode_step, max_episode_step * 2),
+            torch.Tensor: Padding mask tensor of shape (batch_size,cur_seq, full_seq),
                 where 0 indicates padding positions and 1 indicates real time steps.
         """
 

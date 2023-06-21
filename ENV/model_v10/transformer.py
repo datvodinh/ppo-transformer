@@ -163,7 +163,7 @@ class GatedTransformerXL(nn.Module):
                 torch.triu(
                     torch.ones((cur_seq, full_seq)),
                     diagonal=1 + prev_seq,  # fixed in train, eval, collect
-                ).bool().unsqueeze(-1).to(h.device)
+                ).bool().unsqueeze(-1)
             )  # cur_seq x full_seq x 1
             self.att_mask[cur_seq] = attn_mask
 
