@@ -23,7 +23,7 @@ class Trainer:
             self.writer    = Writer(writer_path)
         self.agent         = Agent(self.env,self.model,config)
     
-    def _cal_loss(self,value,value_new,entropy,log_prob,log_prob_new,advantage,padding):
+    def _cal_loss(self,value,value_new,entropy,log_prob,log_prob_new,advantage):
         """
         Overview:
             Calculate Total Loss
@@ -43,51 +43,42 @@ class Trainer:
 
         
         """
-        value           = self._padding(value,padding,value=-100)
-        value_new       = self._padding(value_new,padding,value=-100)
-        entropy         = self._padding(entropy,padding,value=-100)
-        log_prob        = self._padding(log_prob,padding,value=-100)
-        log_prob_new    = self._padding(log_prob_new,padding,value=-100)
-        advantage       = self._padding(advantage,padding,value=-100)
-
-        value           = value[value!=-100].detach()
-        value_new       = value_new[value_new!=-100]
-        entropy         = entropy[entropy!=-100]
-        log_prob        = log_prob[log_prob!=-100].detach()
-        log_prob_new    = log_prob_new[log_prob_new!=-100]
-        advantage       = advantage[advantage!=-100].detach()
-
+        #Calculate returns and advantage
         returns         = value + advantage
-        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
-
+        advantage       = (advantage - advantage.mean()) / (advantage.std() + 1e-6)
+        #Ratios and KL divergence
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
-
-        #Calculate 
+        #PG loss
+        R_dot_A = ratios * advantage
         actor_loss      = -torch.where(
-                            (Kl > self.config["policy_kl_range"]) & (ratios > 1),
-                            ratios * advantage - self.config["policy_params"] * Kl,
-                            ratios * advantage
-                        )
+                            (Kl >= self.config["policy_kl_range"]) & (R_dot_A > advantage),
+                            R_dot_A - self.config["policy_params"] * Kl,
+                            R_dot_A
+                        ).mean()
+        #Critic loss
         value_clipped   = value + torch.clamp(value_new - value, -self.config["value_clip"], self.config["value_clip"])
-        critic_loss     = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2)
-
-        total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
-
-        return actor_loss.mean().detach(), critic_loss.mean().detach(), total_loss.mean(), entropy.mean()
+        critic_loss     = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2).mean()
+        #Total loss
+        total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy.mean()
+        # print(actor_loss,critic_loss,total_loss)
+        return actor_loss, critic_loss, total_loss, entropy.mean()
     
-    def _padding(self,
+    def _remove_padding(self,
                  t:torch.Tensor,
                  padding:torch.Tensor,
-                 value = -1e20):
+                 value = -100):
         """
         Overviews:
             Return tensor with padding for policy and value loss.
         Arguments:
             - t: (`torch.Tensor`): tensor
             - padding: (`torch.Tensor`): padding mask
+        Returns:
+            - Tensor t without padding
         """
-        return t.masked_fill(padding==0,value=float(str(value)))
+        t =  t.masked_fill(padding==0,value=float(str(value)))
+        return t[t!=value]
 
     
 
@@ -110,32 +101,34 @@ class Trainer:
                     val_new         = val_new.squeeze(1)
                     # print(pol_new, mini_batch["action_mask"])
                     B,M,A = mini_batch["action_mask"].shape
+                    # print(pol_new.shape,(B,M,A))
                     categorical_new = Categorical(logits=pol_new.masked_fill(mini_batch["action_mask"].view(B*M,A)==0,float('-1e20')))
                     log_prob_new    = categorical_new.log_prob(mini_batch["actions"].view(1,-1)).squeeze(0)
                     entropy         = categorical_new.entropy()
 
+                    padding = mini_batch["padding"].reshape(-1)
                     actor_loss, critic_loss, total_loss,entropy = self._cal_loss(
-                        value        = mini_batch["values"].reshape(-1),
-                        value_new    = val_new,
-                        entropy      = entropy,
-                        log_prob     = mini_batch["probs"].reshape(-1),
-                        log_prob_new = log_prob_new,
-                        advantage    = mini_batch["advantages"].reshape(-1),
-                        padding      = mini_batch["padding"].reshape(-1)
+                        value        = self._remove_padding(mini_batch["values"].reshape(-1),padding).detach(),
+                        value_new    = self._remove_padding(val_new,padding),
+                        entropy      = self._remove_padding(entropy,padding),
+                        log_prob     = self._remove_padding(mini_batch["probs"].reshape(-1),padding).detach(),
+                        log_prob_new = self._remove_padding(log_prob_new,padding),
+                        advantage    = self._remove_padding(mini_batch["advantages"].reshape(-1),padding),
                     )
                     with torch.autograd.set_detect_anomaly(self.config["set_detect_anomaly"]):
                         if not torch.isnan(total_loss).any():
-                            self.optimizer.zero_grad(set_to_none=True)
+                            self.optimizer.zero_grad()
                             total_loss.backward()
                             nn.utils.clip_grad_norm_(self.model.parameters(),max_norm=self.config["max_grad_norm"])
                             self.optimizer.step()
                     if write_data:
+                        
                         with torch.no_grad():
                             self.writer.add(
                                 step        = step,
                                 win_rate    = win_rate,
                                 reward      = self.agent.rollout.batch["rewards"].mean(),
-                                entropy     = entropy.mean(),
+                                entropy     = entropy,
                                 actor_loss  = actor_loss,
                                 critic_loss = critic_loss,
                                 total_loss  = total_loss
