@@ -7,8 +7,7 @@ class RelativeMultiheadAttention(nn.Module):
     """Calculate Relative Multihead Attention"""
     def __init__(self,
                  embed_dim:int,
-                 num_heads:int,
-                 dropout=None) -> None:
+                 num_heads:int) -> None:
         """Overview:
             Init AttentionXL.
         Arguments:
@@ -29,10 +28,6 @@ class RelativeMultiheadAttention(nn.Module):
         self.Pos        = nn.Linear(embed_dim,embed_dim,bias=False)
 
         self.out_projection = nn.Linear(embed_dim,embed_dim)
-
-        if dropout is not None:
-            self.dropout1 = nn.Dropout(dropout)
-            self.dropout2 = nn.Dropout(dropout)
 
     def forward(self,
                 query: torch.Tensor,
@@ -92,7 +87,6 @@ class RelativeMultiheadAttention(nn.Module):
             attention_score = attention_score.masked_fill(padding_mask,float("-1e20")).type_as(attention_score)
             
         attention_score = torch.softmax(attention_score,dim=1)
-        attention_score = self.dropout1(attention_score)
 
         assert torch.isnan(attention_score).any()==False, "attention score return NaN after softmax!" 
 
@@ -101,7 +95,7 @@ class RelativeMultiheadAttention(nn.Module):
 
         assert torch.isnan(alpha).any()==False, "RMA alpha return NaN!" 
 
-        return self.dropout2(self.out_projection(alpha))
+        return self.out_projection(alpha)
     
 
     def _rel_shift(self, x: torch.Tensor, zero_triu=False):

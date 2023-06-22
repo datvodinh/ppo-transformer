@@ -33,7 +33,7 @@ class TransformerBlock(nn.Module):
     """Transformer Block"""
     def __init__(self,embed_dim,num_heads,config):
         super().__init__()
-        self.attention   = RelativeMultiheadAttention(embed_dim,num_heads,config["dropout"])
+        self.attention   = RelativeMultiheadAttention(embed_dim,num_heads)
         self.layer_norm1 = nn.LayerNorm(embed_dim)
         self.layer_norm2 = nn.LayerNorm(embed_dim)
         self.gate1       = GRUGate(embed_dim,config['gru_bias'])
@@ -45,17 +45,13 @@ class TransformerBlock(nn.Module):
             nn.Linear(4*embed_dim,embed_dim),
             nn.GELU()
         )
-        if config["dropout"] is not None:
-            self.dropout = nn.Dropout(config["dropout"])
             
 
     def forward(self,query,key,pos_embedding,U,V,mask=None,padding_mask=None):
         norm_key = self.layer_norm1(key)
         Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,U,V,mask,padding_mask)
-        Y        = self.dropout(Y)
         out      = self.gate1(query,Y)
         E        = self.fc(self.layer_norm2(out))
-        E        = self.dropout(E)
         out      = self.gate2(out,E)
         assert torch.isnan(out).any()==False, "Transformer block return NaN!"
 
@@ -95,9 +91,6 @@ class GatedTransformerXL(nn.Module):
         self.att_mask = {}  # create an attention mask for each different seq_len, in this way we don't need to create a
         # new one each time we call the forward method
         self.pos_embedding_dict = {}  # create a pos embedding for each different seq_len
-        
-        if config["dropout"] is not None:
-            self.dropout = nn.Dropout(config["dropout"])
 
         self.history_memory = None
         
@@ -153,7 +146,6 @@ class GatedTransformerXL(nn.Module):
             self.reset_memory(bs)
 
         h = self.activation(self.linear_embedding(h))
-        h = self.dropout(h)
         
         memory = self.memory.get()
         # Positional embedding
@@ -176,9 +168,7 @@ class GatedTransformerXL(nn.Module):
         else:
             pos_embedding = self.pos_embedding(full_seq)
             self.pos_embedding_dict[f"{cur_seq},{full_seq}"] = pos_embedding
-
-        pos_embedding = self.dropout(pos_embedding)  # full_seq x 1 x embedding_dim
-
+# full_seq x 1 x embedding_dim
         hidden_state = [h]
         out = h
         for i in range(self.num_blocks):
@@ -197,4 +187,4 @@ class GatedTransformerXL(nn.Module):
         self.memory.update(hidden_state)  # (layer_num+1) x memory_len x batch_size x embedding_dim
         out = torch.transpose(out, 1, 0)  #  (cur_seq, batch_size, input_dim) ->  (batch_size, cur_seq, input_dim)
         assert torch.isnan(out).any()==False,"Transformer return NaN!"
-        return self.dropout(out)
+        return out
