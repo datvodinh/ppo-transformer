@@ -35,7 +35,7 @@ class PPOTransformerModel(nn.Module):
             self._layer_init(nn.Linear(config['hidden_size'],1),std=1)
         )
 
-        for submodule in self.model.modules():
+        for submodule in self.modules():
             submodule.register_forward_hook(self.nan_hook)
 
     @staticmethod
