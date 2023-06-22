@@ -70,11 +70,11 @@ class RelativeMultiheadAttention(nn.Module):
         queries = self.Queries(query).view(query_len,batch_size,self.num_heads,self.heads_dim)
         keys    = self.Keys(key).view(key_len,batch_size,self.num_heads,self.heads_dim)
         values  = self.Values(value).view(value_len,batch_size,self.num_heads,self.heads_dim)
-        R = self.Pos(pos_embedding).view(-1,self.num_heads,self.heads_dim)
+        R       = self.Pos(pos_embedding).view(-1,self.num_heads,self.heads_dim)
 
-        content_score  = torch.einsum("qbhd,kbhd->qkbh",[queries+U,keys])
-        position_score = torch.einsum("qbhd,khd->qkbh",[queries+V,R])
-        position_score = self._rel_shift(position_score)
+        content_score   = torch.einsum("qbhd,kbhd->qkbh",[queries+U,keys])
+        position_score  = torch.einsum("qbhd,khd->qkbh",[queries+V,R])
+        position_score  = self._rel_shift(position_score)
         attention_score = (content_score + position_score) / self.d # (query_len,key_len,batch_size,num_heads)
         if mask is not None:
             mask = mask.unsqueeze(-1)  #  cur_seq x full_seq x 1 x 1
@@ -83,9 +83,9 @@ class RelativeMultiheadAttention(nn.Module):
         
         if padding_mask is not None:
             padding_mask = self._padding_mask(padding_mask,query_len,key_len) # (batch_size,cur_seq, full_seq)
-            padding_mask = padding_mask.permute(1,2,0).unsqueeze(-1) # (cur_seq, full_seq,batch_size,,1)
+            padding_mask = padding_mask.permute(1,2,0).unsqueeze(-1) # (cur_seq, full_seq,batch_size,1)
             assert padding_mask.shape[:2] == attention_score.shape[:2]  # check shape of padding_mask
-            attention_score = attention_score.masked_fill(padding_mask==0,float("-1e20")).type_as(attention_score)
+            attention_score = attention_score.masked_fill(padding_mask,float("-1e20")).type_as(attention_score)
             
         attention_score = torch.softmax(attention_score,dim=1)
         attention_score = self.dropout1(attention_score)
@@ -115,8 +115,7 @@ class RelativeMultiheadAttention(nn.Module):
         Returns:
             - x (`torch.Tensor`): input after relative shift. Shape (cur_seq, full_seq, bs, head_num).
         """
-        zero_pad = torch.zeros((x.size(0), 1, *x.size()[2:]),
-                               device=x.device, dtype=x.dtype)
+        zero_pad = torch.zeros((x.size(0), 1, *x.size()[2:]), dtype=x.dtype)
         x_padded = torch.cat([zero_pad, x], dim=1)
 
         x_padded = x_padded.view(x.size(1) + 1, x.size(0), *x.size()[2:])
@@ -147,9 +146,9 @@ class RelativeMultiheadAttention(nn.Module):
         pad_mask = pad @ pad.permute(0,2,1) # (batch_size, max_episode_step,max_episode_step)
         if full_len > seq_len:
             pad_mem = torch.ones(pad.shape[0],pad.shape[1],full_len - seq_len)
-            return torch.cat([pad_mem,pad_mask],dim = 2)
+            return torch.cat([pad_mem,pad_mask],dim = 2) == 0
         else:
-            return pad_mask
+            return pad_mask == 0
 
 
 
