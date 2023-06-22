@@ -35,6 +35,21 @@ class PPOTransformerModel(nn.Module):
             self._layer_init(nn.Linear(config['hidden_size'],1),std=1)
         )
 
+        for submodule in self.model.modules():
+            submodule.register_forward_hook(self.nan_hook)
+
+    @staticmethod
+    def nan_hook(self, inp, output):
+        if not isinstance(output, tuple):
+            outputs = [output]
+        else:
+            outputs = output
+
+        for i, out in enumerate(outputs):
+            nan_mask = torch.isnan(out)
+            if nan_mask.any():
+                print("Hook: Nan occured In", self.__class__.__name__)
+
     @staticmethod
     def _layer_init(layer, std=np.sqrt(2), bias_const=0.0):
         """

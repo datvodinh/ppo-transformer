@@ -52,7 +52,7 @@ class TransformerBlock(nn.Module):
     def forward(self,query,key,pos_embedding,U,V,mask=None,padding_mask=None):
         norm_key = self.layer_norm1(key)
         Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,U,V,mask,padding_mask)
-        Y        = nn.GELU()(self.dropout(Y))
+        Y        = self.dropout(Y)
         out      = self.gate1(query,Y)
         E        = self.fc(self.layer_norm2(out))
         E        = self.dropout(E)
