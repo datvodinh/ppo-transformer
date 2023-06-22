@@ -60,6 +60,7 @@ class RelativeMultiheadAttention(nn.Module):
         Returns:
             - alpha (`torch.Tensor`): attention output of shape (cur_seq, bs, input_dim)
         """
+
         batch_size = query.shape[1]
         query_len,key_len,value_len = query.shape[0], key.shape[0], value.shape[0]
         
@@ -73,6 +74,8 @@ class RelativeMultiheadAttention(nn.Module):
         position_score  = self._rel_shift(position_score)
         attention_score = (content_score + position_score) / self.d # (query_len,key_len,batch_size,num_heads)
 
+        assert torch.isnan(queries+U).any()==False
+        assert torch.isnan(keys).any()==False
         assert torch.isnan(content_score).any()==False, "content score return NaN!" 
         assert torch.isnan(position_score).any()==False, "position score return NaN!" 
         assert torch.isnan(attention_score).any()==False, "attention score return NaN!" 
