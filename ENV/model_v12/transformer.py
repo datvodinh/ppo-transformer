@@ -57,8 +57,8 @@ class TransformerBlock(nn.Module):
         E        = self.fc(self.layer_norm2(out))
         E        = self.dropout(E)
         out      = self.gate2(out,E)
-        if torch.isnan(out).any():
-            print("Transformer block return NaN!", out)
+        assert torch.isnan(out).any()==False, "Transformer block return NaN!"
+
         return out
 
 
@@ -151,8 +151,6 @@ class GatedTransformerXL(nn.Module):
             self.reset_memory(bs)  # (layer_num+1) x memory_len x batch_size x embedding_dim
         elif memory.shape[-2] != bs or memory.shape[-1] != self.embed_dim:
             self.reset_memory(bs)
-            # if bs > 1:
-            #     self.memory.init_memory(self.history_memory)
 
         h = self.activation(self.linear_embedding(h))
         h = self.dropout(h)
@@ -198,6 +196,5 @@ class GatedTransformerXL(nn.Module):
 
         self.memory.update(hidden_state)  # (layer_num+1) x memory_len x batch_size x embedding_dim
         out = torch.transpose(out, 1, 0)  #  (cur_seq, batch_size, input_dim) ->  (batch_size, cur_seq, input_dim)
-        if torch.isnan(out).any():
-            print("Transformer return NaN!", out)
+        assert torch.isnan(out).any()==False,"Transformer return NaN!"
         return self.dropout(out)

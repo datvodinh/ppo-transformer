@@ -60,10 +60,6 @@ class RelativeMultiheadAttention(nn.Module):
         Returns:
             - alpha (`torch.Tensor`): attention output of shape (cur_seq, bs, input_dim)
         """
-        # cur_seq, full_seq = query_len, key_len
-        # key shape: (key_len,batch_size,embed_size)
-        # query shape: (query_len,batch_size,embed_size)
-        # value shape: (value_len,batch_size,embed_size)
         batch_size = query.shape[1]
         query_len,key_len,value_len = query.shape[0], key.shape[0], value.shape[0]
         
@@ -76,6 +72,11 @@ class RelativeMultiheadAttention(nn.Module):
         position_score  = torch.einsum("qbhd,khd->qkbh",[queries+V,R])
         position_score  = self._rel_shift(position_score)
         attention_score = (content_score + position_score) / self.d # (query_len,key_len,batch_size,num_heads)
+
+        assert torch.isnan(content_score).any()==False, "content score return NaN!" 
+        assert torch.isnan(position_score).any()==False, "position score return NaN!" 
+        assert torch.isnan(attention_score).any()==False, "attention score return NaN!" 
+
         if mask is not None:
             mask = mask.unsqueeze(-1)  #  cur_seq x full_seq x 1 x 1
             assert mask.shape[:2] == attention_score.shape[:2] , f"Mask shape: {mask.shape} vs Attention shape: {attention_score.shape}" # check shape of mask
@@ -90,11 +91,13 @@ class RelativeMultiheadAttention(nn.Module):
         attention_score = torch.softmax(attention_score,dim=1)
         attention_score = self.dropout1(attention_score)
 
+        assert torch.isnan(attention_score).any()==False, "attention score return NaN after softmax!" 
+
         alpha = torch.einsum("qkbh,vbhd->qbhd",[attention_score,values])
-        alpha = alpha.contiguous().view(alpha.size(0),alpha.size(1),self.embed_dim)
-        # alpha shape: (query_len,batch_size,embed_dim)
-        if torch.isnan(alpha).any():
-            print("RMA return NaN!", alpha)
+        alpha = alpha.contiguous().view(alpha.size(0),alpha.size(1),self.embed_dim) # alpha shape: (query_len,batch_size,embed_dim)
+
+        assert torch.isnan(alpha).any()==False, "RMA alpha return NaN!" 
+
         return self.dropout2(self.out_projection(alpha))
     
 
