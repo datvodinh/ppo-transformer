@@ -173,11 +173,11 @@ class GatedTransformerXL(nn.Module):
             )  # cur_seq x full_seq x 1
             self.att_mask[f"{cur_seq},{full_seq}"] = attn_mask
 
-        if cur_seq in self.pos_embedding_dict.keys():
-            pos_embedding = self.pos_embedding_dict[cur_seq]
+        if f"{cur_seq},{full_seq}" in self.pos_embedding_dict.keys():
+            pos_embedding = self.pos_embedding_dict[f"{cur_seq},{full_seq}"]
         else:
             pos_embedding = self.pos_embedding(full_seq)
-            self.pos_embedding_dict[cur_seq] = pos_embedding
+            self.pos_embedding_dict[f"{cur_seq},{full_seq}"] = pos_embedding
 
         pos_embedding = self.dropout(pos_embedding)  # full_seq x 1 x embedding_dim
 
