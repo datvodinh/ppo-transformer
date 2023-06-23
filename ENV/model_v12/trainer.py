@@ -45,7 +45,7 @@ class Trainer:
         """
         #Calculate returns and advantage
         returns         = value + advantage
-        advantage       = (advantage - advantage.mean()) / (advantage.std() + 1e-6)
+        # advantage       = (advantage - advantage.mean()) / (advantage.std() + 1e-6)
         #Ratios and KL divergence
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
