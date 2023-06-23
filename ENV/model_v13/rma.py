@@ -36,8 +36,7 @@ class RelativeMultiheadAttention(nn.Module):
                 pos_embedding: torch.Tensor,
                 U: torch.Tensor,
                 V: torch.Tensor,
-                mask: None,
-                padding_mask: None)->torch.Tensor:
+                mask: None)->torch.Tensor:
         """Overview:
             Compute Relative Multi-head Attention.
 
@@ -79,13 +78,7 @@ class RelativeMultiheadAttention(nn.Module):
             mask = mask.unsqueeze(-1)  #  cur_seq x full_seq x 1 x 1
             assert mask.shape[:2] == attention_score.shape[:2] , f"Mask shape: {mask.shape} vs Attention shape: {attention_score.shape}" # check shape of mask
             attention_score = attention_score.masked_fill(mask,float("-1e20")).type_as(attention_score)
-        
-        if padding_mask is not None:
-            padding_mask = self._padding_mask(padding_mask,query_len,key_len) # (batch_size,cur_seq, full_seq)
-            padding_mask = padding_mask.permute(1,2,0).unsqueeze(-1) # (cur_seq, full_seq,batch_size,1)
-            assert padding_mask.shape[:2] == attention_score.shape[:2], f"Mask shape: {padding_mask.shape} vs Attention shape: {attention_score.shape}"  # check shape of padding_mask
-            attention_score = attention_score.masked_fill(padding_mask,float("-1e20")).type_as(attention_score)
-            
+                 
         attention_score = torch.softmax(attention_score,dim=1)
 
         assert torch.isnan(attention_score).any()==False, "attention score return NaN after softmax!" 
@@ -127,28 +120,6 @@ class RelativeMultiheadAttention(nn.Module):
             x = x * torch.tril(ones, x.size(1) - x.size(0))[:,:,None,None]
 
         return x
-    
-    def _padding_mask(self,pad,seq_len,full_len):
-        """
-        Create a padding mask for attention based on the time step array.
-
-        Args:
-            pad (torch.Tensor): Time step array tensor of shape (batch_size, cur_seq),
-                where 1 represents a real time step and 0 represents padding.
-
-        Returns:
-            torch.Tensor: Padding mask tensor of shape (batch_size,cur_seq, full_seq),
-                where 0 indicates padding positions and 1 indicates real time steps.
-        """
-
-        pad      = pad.unsqueeze(2) # (batch_size, max_episode_step,1)
-
-        pad_mask = pad @ pad.permute(0,2,1) # (batch_size, max_episode_step,max_episode_step)
-        if full_len > seq_len:
-            pad_mem = torch.ones(pad.shape[0],pad.shape[1],full_len - seq_len)
-            return torch.cat([pad_mem,pad_mask],dim = 2) == 0
-        else:
-            return pad_mask == 0
 
 
 

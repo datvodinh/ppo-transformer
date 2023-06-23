@@ -47,9 +47,9 @@ class TransformerBlock(nn.Module):
         )
             
 
-    def forward(self,query,key,pos_embedding,U,V,mask=None,padding_mask=None):
+    def forward(self,query,key,pos_embedding,U,V,mask=None):
         norm_key = self.layer_norm1(key)
-        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,U,V,mask,padding_mask)
+        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,pos_embedding,U,V,mask)
         out      = self.gate1(query,Y)
         E        = self.fc(self.layer_norm2(out))
         out      = self.gate2(out,E)
@@ -121,8 +121,7 @@ class GatedTransformerXL(nn.Module):
             self.memory.init(state)
 
     def forward(self,
-                 h:torch.Tensor,
-                 padding_mask = None):
+                 h:torch.Tensor):
         """
         Overview:
             GTrXL forward pass.
@@ -179,8 +178,7 @@ class GatedTransformerXL(nn.Module):
                 pos_embedding=pos_embedding,
                 U=self.U,
                 V=self.V,
-                mask=attn_mask,
-                padding_mask = padding_mask
+                mask=attn_mask
             )  # cur_seq x bs x embedding_dim
             hidden_state.append(out.detach().clone())
 
