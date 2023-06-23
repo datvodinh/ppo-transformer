@@ -45,7 +45,7 @@ class Trainer:
         """
         #Calculate returns and advantage
         returns         = value + advantage
-        advantage       = (advantage - advantage.mean()) / (advantage.std() + 1e-6)
+        # advantage       = (advantage - advantage.mean()) / (advantage.std() + 1e-6)
         #Ratios and KL divergence
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
@@ -113,7 +113,7 @@ class Trainer:
                         entropy      = self._remove_padding(entropy,padding),
                         log_prob     = self._remove_padding(mini_batch["probs"].reshape(-1),padding).detach(),
                         log_prob_new = self._remove_padding(log_prob_new,padding),
-                        advantage    = self._remove_padding(mini_batch["advantages"].reshape(-1),padding),
+                        advantage    = self._remove_padding(mini_batch["advantages"].reshape(-1),padding).detach(),
                     )
                     with torch.autograd.set_detect_anomaly(self.config["set_detect_anomaly"]):
                         if not torch.isnan(total_loss).any():
