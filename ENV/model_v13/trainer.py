@@ -97,7 +97,7 @@ class Trainer:
             for _ in range(self.config["num_epochs"]):
                 mini_batch_loader   = self.agent.rollout.mini_batch_loader(self.config)
                 for mini_batch in mini_batch_loader:
-                    pol_new,val_new = self.model(mini_batch["states"],mini_batch["padding"])
+                    pol_new,val_new = self.model(mini_batch["states"])
                     val_new         = val_new.squeeze(1)
                     # print(pol_new, mini_batch["action_mask"])
                     B,M,A = mini_batch["action_mask"].shape
