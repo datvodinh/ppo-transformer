@@ -68,7 +68,7 @@ class PPOTransformerModel(nn.Module):
         torch.nn.init.constant_(layer.bias, bias_const)
         return layer
     
-    def forward(self,state,padding_mask=None):
+    def forward(self,state):
         """
         Overview:
             Forward method.
@@ -82,7 +82,7 @@ class PPOTransformerModel(nn.Module):
         """
         
         out    = self.fc(state)
-        out    = self.transformer(out,padding_mask)
+        out    = self.transformer(out)
         B,L,S  = out.shape
         out    = out.reshape(B*L,S)
         policy = self.policy(out)
