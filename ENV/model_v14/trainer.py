@@ -51,10 +51,10 @@ class Trainer:
         weighted_clipped_prob = torch.clamp(ratios,1-0.2,1+0.2) * advantage
         actor_loss = -torch.min(weighted_prob,weighted_clipped_prob)
 
-        value_clipped = value + torch.clamp(value_new - value, -0.2, 0.2)
+        value_clipped = value + torch.clamp(value_new - value, -self.config["value_clip"], self.config["value_clip"])
 
         critic_loss = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2)
-        total_loss = actor_loss + self.critic_coef * critic_loss - self.entropy_coef * entropy
+        total_loss = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
 
         return actor_loss, critic_loss, total_loss, entropy.mean()
     
