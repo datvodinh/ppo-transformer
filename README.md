@@ -29,4 +29,7 @@ Model_v8: like model 6 but (model v2)
 Model_v9: sequence_length = max_eps_length, add dropout, many optimize
 model_v10: fix padding and normalization, fix truly ppo (modelv9)
 model_v11: U,V (in RMA) be global (share between rma) (model v10)
+model_v12: 
+model_v13: remove padding (model_v12)
+model_v14: replace with normal ppo(model_v13) 
 ```

@@ -45,23 +45,17 @@ class Trainer:
         """
         #Calculate returns and advantage
         returns         = value + advantage
-        # advantage       = (advantage - advantage.mean()) / (advantage.std() + 1e-6)
-        #Ratios and KL divergence
-        ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
-        Kl              = kl_divergence(Categorical(logits=log_prob), Categorical(logits=log_prob_new))
-        #PG loss
-        R_dot_A = ratios * advantage
-        actor_loss      = -torch.where(
-                            (Kl >= self.config["policy_kl_range"]) & (R_dot_A > advantage),
-                            R_dot_A - self.config["policy_params"] * Kl,
-                            R_dot_A
-                        ).mean()
-        #Critic loss
-        value_clipped   = value + torch.clamp(value_new - value, -self.config["value_clip"], self.config["value_clip"])
-        critic_loss     = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2).mean()
-        #Total loss
-        total_loss      = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy.mean()
-        # print(actor_loss,critic_loss,total_loss)
+        ratios = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-1000.,max=20.))
+        # print(ratios)
+        weighted_prob = ratios * advantage
+        weighted_clipped_prob = torch.clamp(ratios,1-0.2,1+0.2) * advantage
+        actor_loss = -torch.min(weighted_prob,weighted_clipped_prob)
+
+        value_clipped = value + torch.clamp(value_new - value, -0.2, 0.2)
+
+        critic_loss = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2)
+        total_loss = actor_loss + self.critic_coef * critic_loss - self.entropy_coef * entropy
+
         return actor_loss, critic_loss, total_loss, entropy.mean()
     
     def _remove_padding(self,
