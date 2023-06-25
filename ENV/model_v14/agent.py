@@ -2,8 +2,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from numba import njit
-from model_v13.rollout_buffer import RolloutBuffer
-from model_v13.memory import Memory
+from model_v14.rollout_buffer import RolloutBuffer
+from model_v14.memory import Memory
 from torch.distributions import Categorical
 class Agent():
     """Agent"""

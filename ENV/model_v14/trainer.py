@@ -6,9 +6,9 @@ import time
 import os
 
 from setup import make
-from model_v13.model import PPOTransformerModel
-from model_v13.agent import Agent
-from model_v13.writer import Writer
+from model_v14.model import PPOTransformerModel
+from model_v14.agent import Agent
+from model_v14.writer import Writer
 
 class Trainer:
     """Train the model"""
@@ -45,7 +45,7 @@ class Trainer:
         """
         #Calculate returns and advantage
         returns               = value + advantage
-        ratios                = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-1000.,max=20.))
+        ratios                = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         weighted_prob         = ratios * advantage
         weighted_clipped_prob = torch.clamp(ratios,1-0.2,1+0.2) * advantage
         actor_loss            = -torch.min(weighted_prob,weighted_clipped_prob).mean()

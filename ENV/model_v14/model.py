@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from model_v13.transformer import GatedTransformerXL
+from model_v14.transformer import GatedTransformerXL
 
 class PPOTransformerModel(nn.Module):
     def __init__(self,config,state_size,action_size):
@@ -22,16 +22,16 @@ class PPOTransformerModel(nn.Module):
         self.transformer = GatedTransformerXL(config,input_dim=config['embed_dim'])
 
         self.policy = nn.Sequential(
-            nn.GELU(),
+            nn.Tanh(),
             self._layer_init(nn.Linear(config['embed_dim'],config['hidden_size']),std=np.sqrt(2)),
-            nn.GELU(),
+            nn.Tanh(),
             self._layer_init(nn.Linear(config['hidden_size'],action_size),std=0.01)
         )
 
         self.value = nn.Sequential(
-            nn.GELU(),
+            nn.Tanh(),
             self._layer_init(nn.Linear(config['embed_dim'],config['hidden_size']),std=np.sqrt(2)),
-            nn.GELU(),
+            nn.Tanh(),
             self._layer_init(nn.Linear(config['hidden_size'],1),std=1)
         )
 
