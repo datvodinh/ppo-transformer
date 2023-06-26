@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from model_v14.transformer import GatedTransformerXL
+from model_v15.transformer import GatedTransformerXL
 
 class PPOTransformerModel(nn.Module):
     def __init__(self,config,state_size,action_size):
@@ -17,9 +17,10 @@ class PPOTransformerModel(nn.Module):
             - action_size (`int`): size of action space
         Return:
         """
-        self.fc = self._layer_init(nn.Linear(state_size,config['embed_dim']),std=np.sqrt(2))
+        self.fc_pol = self._layer_init(nn.Linear(state_size,config['embed_dim']),std=np.sqrt(2))
+        self.fc_val = self._layer_init(nn.Linear(state_size,config['embed_dim']),std=np.sqrt(2))
 
-        self.transformer = GatedTransformerXL(config,input_dim=config['embed_dim'])
+        self.transformer_pol = GatedTransformerXL(config,input_dim=config['embed_dim'])
 
         self.policy = nn.Sequential(
             nn.Tanh(),
@@ -34,7 +35,7 @@ class PPOTransformerModel(nn.Module):
             nn.Tanh(),
             self._layer_init(nn.Linear(config['hidden_size'],1),std=1)
         )
-
+        
         for submodule in self.modules():
             submodule.register_forward_hook(self.nan_hook)
 
@@ -81,12 +82,15 @@ class PPOTransformerModel(nn.Module):
             - value: (torch.Tensor): value with shape (batch_size,1)
         """
         
-        out    = self.fc(state)
-        out    = self.transformer(out)
-        B,L,S  = out.shape
-        out    = out.reshape(B*L,S)
-        policy = self.policy(out)
-        value  = self.value(out)
+        out_pol = self.fc_pol(state)
+        out_val = self.fc_val(state)
+        out_pol = self.transformer_pol(out_pol)
+        B,L,S   = out_pol.shape
+        out_pol = out_pol.reshape(B*L,S)
+        out_val = out_val.reshape(B*L,S)
+        policy  = self.policy(out_pol)
+        value   = self.value(out_val)
 
         return policy,value
-
+    
+    

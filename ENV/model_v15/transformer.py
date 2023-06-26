@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from model_v14.rma import *
-from model_v14.gru import *
-from model_v14.memory import *
+from model_v15.rma import *
+from model_v15.gru import *
+from model_v15.memory import *
 
 class SinusoidalPE(nn.Module):
     """Relative positional encoding"""

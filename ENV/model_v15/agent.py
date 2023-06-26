@@ -2,8 +2,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from numba import njit
-from model_v14.rollout_buffer import RolloutBuffer
-from model_v14.memory import Memory
+from model_v15.rollout_buffer import RolloutBuffer
+from model_v15.memory import Memory
 from torch.distributions import Categorical
 class Agent():
     """Agent"""
@@ -67,7 +67,7 @@ class Agent():
                                     prob         = log_prob
                                     )
                 
-                self.model.transformer.reset_memory(batch_size=1,mem_length=0)
+                self.model.transformer_pol.reset_memory(batch_size=1,mem_length=0)
                 self.rollout.game_count+=1
                 self.rollout.step_count=0
         
@@ -100,7 +100,7 @@ class Agent():
             - num_games: (`int`): number of games.
             
         """
-        self.model.transformer.reset_memory(batch_size=1,mem_length=0)
+        self.model.transformer_pol.reset_memory(batch_size=1,mem_length=0)
         win_rate =  self.env.run(self.play,num_games,np.array([0.]),1)[0] / num_games
         # print(num_games,win_rate)
         return win_rate
