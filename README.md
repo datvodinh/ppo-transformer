@@ -32,4 +32,5 @@ model_v11: U,V (in RMA) be global (share between rma) (model v10)
 model_v12: 
 model_v13: remove padding (model_v12)
 model_v14: replace with normal ppo(model_v13) 
+model_v15: seperate value and policy(model_v14)
 ```
