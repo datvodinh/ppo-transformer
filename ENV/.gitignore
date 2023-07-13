@@ -7,49 +7,13 @@
 **/.ipynb_checkpoints/
 .pytest_cache
 # .github
-
-src/Agent/Chain3/Data/Catan_1
-src/Agent/Chain3/Data/Century_1
-src/Agent/Chain3/Data/Splendor_1
-src/Agent/Chain3/Data/MachiKoro_1
-src/Agent/Chain3/Data/Splendor_v2_1
-src/Agent/Chain3/Data/Splendor_v3_1
-src/Agent/Chain3/Data/StoneAge_1
-src/Agent/Chain3/Data/TLMN_1
-src/Agent/Chain3/Data/Sheriff_1
-
-src/Agent/Chain4/Data/Catan_1
-src/Agent/Chain4/Data/Century_1
-src/Agent/Chain4/Data/Splendor_1
-src/Agent/Chain4/Data/MachiKoro_1
-src/Agent/Chain4/Data/Splendor_v2_1
-src/Agent/Chain4/Data/Splendor_v3_1
-src/Agent/Chain4/Data/StoneAge_1
-src/Agent/Chain4/Data/SushiGo_1
-src/Agent/Chain4/Data/Sheriff_1
-src/Agent/Chain4/Data/Durak_1
-src/Agent/Chain4/Data/Fantan_1
-src/Agent/Chain4/Data/Fantan_1
-src/Agent/Chain4/Data/GoFish_1
-
-src/Agent/Chain4/Data/CatanNoExchange_1
-src/Agent/Chain4/Data/CatanNoExchange_0
-
+build/
+dist/
+*.egg-info/
+setup.py
+__init__.py
 envtest.py
 
-train copy 1.py
-train copy 2.py
-train copy 3.py
-train copy 4.py
-train copy 5.py
-train copy 6.py
-train copy 7.py
-train copy.py
-train.py
-test_math.py
-
-#  env.py
-#  index.py
 .vscode
 .mypy_cache
 _.ipynb

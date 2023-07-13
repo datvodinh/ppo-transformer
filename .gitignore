@@ -161,3 +161,5 @@ cython_debug/
 ENV/runs/
 a.ipynb
 eval.ipynb
+test.ipynb
+model_old/

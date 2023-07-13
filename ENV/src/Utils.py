@@ -17,6 +17,7 @@ SHORT_PATH = ""
 import importlib.util
 import sys
 
+
 def load_module_player(player, game_name=None):
     if game_name == None:
         spec = importlib.util.spec_from_file_location(

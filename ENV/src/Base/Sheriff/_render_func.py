@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from src.Base.Sheriff import env as _env
 from src.Base.Sheriff.docs import index
-from setup import SHORT_PATH
+from env import SHORT_PATH
 
 IMG_PATH = SHORT_PATH + "src/Base/Sheriff/images/"
 import os

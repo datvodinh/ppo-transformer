@@ -1,10 +1,10 @@
 import sys
 import numpy as np
 from numba import njit
-from setup import setup_game
+import env
 
 game_name = sys.argv[1]
-env = setup_game(game_name)
+env.make(game_name)
 
 
 from numba.typed import Dict

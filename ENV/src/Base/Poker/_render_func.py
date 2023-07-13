@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from src.Base.Poker import env as _env
-from setup import SHORT_PATH
+from env import SHORT_PATH
 
 IMG_PATH = SHORT_PATH + "src/Base/Poker/images/"
 BG_SIZE = (1680, 900)
@@ -46,7 +46,9 @@ class Params:
         y_0 = 0.2 * BG_SIZE[1] - 0.25 * CARD_SIZE[1]
         y_1 = 0.8 * BG_SIZE[1] - 0.75 * CARD_SIZE[1]
         self.list_coords_1 = [(x_0, y_1), (x_1, y_1), (x_1, y_0), (x_0, y_0)]
-        self.myFont = ImageFont.truetype("src/ImageFonts/FreeMonoBoldOblique.ttf", size=40)
+        self.myFont = ImageFont.truetype(
+            "src/ImageFonts/FreeMonoBoldOblique.ttf", size=40
+        )
         self.fontFold = ImageFont.truetype(
             "src/ImageFonts/FreeMonoBoldOblique.ttf", size=60
         )

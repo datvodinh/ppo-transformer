@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
 from src.Base.Century import env as _env
-from setup import SHORT_PATH
+from env import SHORT_PATH
 
 IMG_PATH = SHORT_PATH + "src/Base/Century/images/"
 BG_SIZE_BASE = np.array((2400, 1600))
@@ -41,7 +41,9 @@ class Sprites:
         victory_card = np.arange(36)
         for i in range(len(victory_card)):
             self.victory_card.append(
-                Image.open(f"./src/Base/Century/images/victory_{i}.png").resize(CARD_SIZE)
+                Image.open(f"./src/Base/Century/images/victory_{i}.png").resize(
+                    CARD_SIZE
+                )
             )
 
         self.ALL_CARD_POINT_IN4 = np.array(
@@ -139,10 +141,12 @@ class Sprites:
         self.coin_gold = Image.open(f"./src/Base/Century/images/coin-gold.png").resize(
             COIN_SIZE
         )
-        self.coin_silver = Image.open(f"./src/Base/Century/images/coin-silver.png").resize(
-            COIN_SIZE
+        self.coin_silver = Image.open(
+            f"./src/Base/Century/images/coin-silver.png"
+        ).resize(COIN_SIZE)
+        self.token = Image.open(f"./src/Base/Century/images/token.png").resize(
+            TOKEN_SIZE
         )
-        self.token = Image.open(f"./src/Base/Century/images/token.png").resize(TOKEN_SIZE)
         self.token_board = Image.open(f"./src/Base/Century/images/token.png").resize(
             TOKEN_SIZE_BOARD
         )

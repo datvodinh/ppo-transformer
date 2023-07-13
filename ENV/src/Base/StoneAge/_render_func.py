@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
 from src.Base.StoneAge import env as _env
-from setup import SHORT_PATH
+from env import SHORT_PATH
 
 BUILDING_CARDS, CIV_CARDS = _env.BUILDING_CARDS, _env.CIV_CARDS
 IMG_PATH = SHORT_PATH + "src/Base/StoneAge/images/"

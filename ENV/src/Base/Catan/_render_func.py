@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from src.Base.Catan import env as _env
 from src.Base.Catan.env import __MAX_TURN_IN_ONE_GAME__
-from setup import SHORT_PATH
+from env import SHORT_PATH
 
 IMG_PATH = SHORT_PATH + "src/Base/CatanNoExchange/images/"
 

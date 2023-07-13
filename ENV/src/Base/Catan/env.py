@@ -1947,7 +1947,7 @@ import importlib.util
 import json, sys
 
 try:
-    from setup import SHORT_PATH
+    from env import SHORT_PATH
 except:
     pass
 
@@ -2036,7 +2036,8 @@ def run(
     num_game: int = 100,
     per_player: np.ndarray = np.array([[0.0]]),
     level: int = 0,
-    *args,):
+    *args,
+):
     num_bot = getAgentSize() - 1
     list_other = np.array([-1] + [i + 1 for i in range(num_bot)])
     try:

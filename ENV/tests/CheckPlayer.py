@@ -1,5 +1,5 @@
 import warnings
-from setup import make
+import env
 from src.Utils import load_module_player
 
 warnings.filterwarnings("ignore")
@@ -20,7 +20,7 @@ COUNT_TEST = 1000
 
 # check hết hệ thống
 def CheckAllFunc(Agent_name, BOOL_CHECK_ENV, msg):
-    make("SushiGo")
+    env.make("SushiGo")
     Agent = load_module_player(Agent_name)
     for func in ["DataAgent", "Train", "Test", "convert_to_save", "convert_to_test"]:
         try:
@@ -37,11 +37,11 @@ def CheckRunGame(Agent_name, BOOL_CHECK_ENV, msg):
         "MachiKoro",
         "SushiGo",
     ]:
-        env = make(game_name)
+        env.make(game_name)
         Agent = load_module_player(Agent_name)
         try:
             per = Agent.DataAgent()
-            win, per = env.numba_main_2(Agent.Train, COUNT_TEST, per, 0)
+            win, per = env.run(Agent.Train, COUNT_TEST, per, 0)
         except:
             msg.append(f"Train đang bị lỗi {game_name}")
             BOOL_CHECK_ENV = False
@@ -49,7 +49,7 @@ def CheckRunGame(Agent_name, BOOL_CHECK_ENV, msg):
 
         try:
             per = Agent.convert_to_test(Agent.convert_to_save(Agent.DataAgent()))
-            win, per = env.numba_main_2(Agent.Test, COUNT_TEST, per, 0)
+            win, per = env.run(Agent.Test, COUNT_TEST, per, 0)
         except:
             msg.append(f"Test đang bị lỗi {game_name}")
             BOOL_CHECK_ENV = False

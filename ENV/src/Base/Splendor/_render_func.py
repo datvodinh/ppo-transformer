@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from src.Base.Splendor import env as _env
 from src.Base.Splendor.env import __NOBLE_CARD__, __NORMAL_CARD__
-from setup import SHORT_PATH
+from env import SHORT_PATH
 
 IMG_PATH = SHORT_PATH + "src/Base/Splendor/images/"
 

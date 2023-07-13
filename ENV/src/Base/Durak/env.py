@@ -300,7 +300,7 @@ import importlib.util
 import json, sys
 
 try:
-    from setup import SHORT_PATH
+    from env import SHORT_PATH
 except:
     pass
 
@@ -377,6 +377,14 @@ def n_game_normal(p0, num_game, per_player, list_other, per1, per2, per3, p1, p2
         #  print(winner)
         win += winner
     return win, per_player
+
+
+@njit()
+def bot_lv0(state, perData):
+    validActions = getValidActions(state)
+    arr_action = np.where(validActions == 1)[0]
+    idx = np.random.randint(0, arr_action.shape[0])
+    return arr_action[idx], perData
 
 
 def load_agent(level, *args):
@@ -485,11 +493,3 @@ def run(
             _list_bot_level_[1],
             _list_bot_level_[2],
         )
-
-
-@njit()
-def bot_lv0(state, perData):
-    validActions = getValidActions(state)
-    arr_action = np.where(validActions == 1)[0]
-    idx = np.random.randint(0, arr_action.shape[0])
-    return arr_action[idx], perData

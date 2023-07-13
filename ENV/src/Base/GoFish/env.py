@@ -274,8 +274,6 @@ def bot_lv0(state, per):
     validActions = getValidActions(state)
     actions = np.where(validActions == 1)[0]
     action = np.random.choice(actions)
-    # act = action
-    # print('ACTION:', act , actions)
     return action, per
 
 
@@ -413,7 +411,7 @@ import importlib.util
 import json, sys
 
 try:
-    from setup import SHORT_PATH
+    from env import SHORT_PATH
 except:
     pass
 

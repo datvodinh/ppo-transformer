@@ -1,5 +1,5 @@
-# ENV - Environment for Reinforcement Learning
-ENV is an open source Python library for developing and comparing reinforcement learning algorithms by providing a standard API to communicate between learning algorithms and environments, as well as a standard set of environments compliant with that API
+# VIS - Environment for Reinforcement Learning
+vis is an open source Python library for developing and comparing reinforcement learning algorithms by providing a standard API to communicate between learning algorithms and environments, as well as a standard set of environments compliant with that API
 
 ![Python package](https://github.com/ngoxuanphong/ENV/workflows/Python%20package/badge.svg) 
 <!-- ![Upload Python Package](https://github.com/ngoxuanphong/ENV/workflows/Upload%20Python%20Package/badge.svg) -->
@@ -7,8 +7,8 @@ ENV is an open source Python library for developing and comparing reinforcement 
 [![Wiki Docs](https://img.shields.io/badge/-Wiki%20Docs-informational?style=flat)](https://github.com/ngoxuanphong/ENV/wiki)
 
 ##  Installation
-We are support Python 3.7, 3.8, 3.9, 3.10 on Linux and Windows
-To install the base ENV library, use:
+We are support Python 3.7, 3.8, 3.9, 3.10 on Linux and Windows  
+To install the base **vis** library, use:
 - Using pip:
     ```python
     Update later
@@ -16,14 +16,21 @@ To install the base ENV library, use:
 
 - Directly from source (recommended):
     ```python
-    git clone https://github.com/ngoxuanphong/ENV.git
-    cd ENV
+    git clone https://github.com/ngoxuanphong/vis.git
+    cd vis
     pip install -r requirements.txt
     ```
 
 ##  API
 ```python
-from setup import make
+import env
+
+env.make()
+env.run(env.agent_random)
+```
+
+```python
+import env
 from numba import njit
 import numpy as np
 
@@ -34,16 +41,16 @@ def Agent(state, agent_data):
     action = np.random.choice(actions)
     return action, agent_data
     
-env = make('SushiGo')
-env.numba_main_2(Agent, 1000, [0], 0)
-# count_win, agent_data = env.numba_main_2(Agent, count_game_train, agent_data, level)
+env.make('SushiGo')
+env.run(Agent, num_game = 1000, agent_model = [0], level = 0)
+
 ```
-[Example](https://github.com/ngoxuanphong/ENV/blob/main/Log/Example.ipynb)
+[Example](https://github.com/ngoxuanphong/ENV/blob/main/src/Log/Example.ipynb)
 
 Please refer to [Wiki](https://github.com/ngoxuanphong/ENV/wiki/Using) for complete usage details
 
 ##  Environment
-ENV includes 20 games:
+**vis** includes 20 games, which are listed below along with the number of actions, observations, time run, win rate they have:
 
 |Game        |Win-lv0       |win-lv1        |win-lv2        |Time-lv0       |Time-lv1       |Time-lv2       | Graphics      | Link|
 |:-----------|:-----------  |:-----------   |:-----------   |:-----------   |:-----------   |:-----------   |:-----------   |:-----------   |

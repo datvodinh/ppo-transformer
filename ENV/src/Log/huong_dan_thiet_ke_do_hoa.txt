@@ -8,7 +8,7 @@ Các bước thiết kế hệ thống đồ họa sử dụng template có sẵ
 		Input: level, *args
 		Output: list_bot_level, list_per_level
 		
-		Cách thực hiện: thực ra ở hàm numba_main_2 có một đoạn code dùng để load các agent theo level. Có thể sử dụng luôn đoạn code này cho hàm load_agent (xem hệ thống mẫu).
+		Cách thực hiện: thực ra ở hàm run có một đoạn code dùng để load các agent theo level. Có thể sử dụng luôn đoạn code này cho hàm load_agent (xem hệ thống mẫu).
 	
 	1.2. Đổi tên file thành _env.py (1 phút)
 

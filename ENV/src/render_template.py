@@ -5,7 +5,7 @@ import ipywidgets as widgets
 import numpy as np
 from IPython.display import clear_output, display
 
-from setup import SHORT_PATH
+from env import SHORT_PATH
 
 
 def import_files(game_name):

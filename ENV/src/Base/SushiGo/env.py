@@ -561,7 +561,7 @@ def n_games_normal(
 import json, sys
 
 try:
-    from setup import SHORT_PATH
+    from env import SHORT_PATH
 except:
     pass
 

@@ -1,6 +1,5 @@
 import warnings
 
-# from setup import make
 
 warnings.filterwarnings("ignore")
 from numba.core.errors import (
@@ -27,11 +26,4 @@ def check_graphics(game_name):
     elif os.path.exists(f"src/Base/{game_name}/env.py") == False:
         BOOL_CHECK_GRAPHICS = False
         msg.append("env.py not found")
-    # else:
-    # try:
-    # env = make(game_name)
-    # env.render(Agent=env.bot_lv0, per_data=[0], level=0, max_temp_frame=100)
-    # except:
-    #     BOOL_CHECK_GRAPHICS = False
-    #     msg.append("render() not found")
     return BOOL_CHECK_GRAPHICS, msg

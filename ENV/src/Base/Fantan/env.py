@@ -363,7 +363,7 @@ def n_games_numba(p0, num_game, per_player, list_other, per1, per2, per3, p1, p2
 import importlib.util, json, sys
 
 try:
-    from setup import SHORT_PATH
+    from env import SHORT_PATH
 except:
     pass
 
