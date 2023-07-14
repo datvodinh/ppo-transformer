@@ -50,7 +50,6 @@ class Trainer:
         if self.config["normalize_advantage"]:
             advantage   = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
-        print(ratios)
         R_dot_A = ratios * advantage
         actor_loss      = -torch.where(
                             (Kl >= self.config["policy_kl_range"]) & (R_dot_A > advantage),
