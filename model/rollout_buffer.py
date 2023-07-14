@@ -69,16 +69,19 @@ class RolloutBuffer:
 
     def add_data(self,state,action,value,reward,done,valid_action,prob,memory,policy):
         """Add data to rollout buffer"""
-        self.batch["states"][self.game_count][self.step_count]      = state
-        self.batch["actions"][self.game_count][self.step_count]     = action
-        self.batch["values"][self.game_count][self.step_count]      = value
-        self.batch["probs"][self.game_count][self.step_count]       = prob
-        self.batch["dones"][self.game_count][self.step_count]       = done
-        self.batch["action_mask"][self.game_count][self.step_count] = valid_action
-        self.batch["rewards"][self.game_count][self.step_count]     = reward
-        self.batch["padding"][self.game_count][self.step_count]     = 1
-        self.batch["memory"][self.game_count][self.step_count]      = memory
-        self.batch["policy"][self.game_count][self.step_count]      = policy
+        try:
+            self.batch["states"][self.game_count][self.step_count]      = state
+            self.batch["actions"][self.game_count][self.step_count]     = action
+            self.batch["values"][self.game_count][self.step_count]      = value
+            self.batch["probs"][self.game_count][self.step_count]       = prob
+            self.batch["dones"][self.game_count][self.step_count]       = done
+            self.batch["action_mask"][self.game_count][self.step_count] = valid_action
+            self.batch["rewards"][self.game_count][self.step_count]     = reward
+            self.batch["padding"][self.game_count][self.step_count]     = 1
+            self.batch["memory"][self.game_count][self.step_count]      = memory
+            self.batch["policy"][self.game_count][self.step_count]      = policy
+        except:
+            pass
 
     def reset_data(self):
         """Clear all data"""
