@@ -19,10 +19,7 @@ class Agent():
         self.rollout       = RolloutBuffer(config,env.getStateSize(),env.getActionSize())
         self.dist          = Distribution()
 
-        self.game_count    = 0 #track current game
-        self.step_count    = 0 #track current time step in game
-
-        
+    @torch.no_grad()
     def play(self,state,per):
         """
         Overview:
@@ -38,19 +35,16 @@ class Agent():
         """
         self.model.eval()
         with torch.no_grad():
-            tensor_state        = torch.tensor(state.reshape(1,1,-1),dtype=torch.float32)
-
+            tensor_state        = torch.tensor(state.reshape(1,-1),dtype=torch.float32)
             sliced_memory       = self.rollout.batched_index_select(
-                self.rollout.batch["memory"],
-                1,
-                self.rollout.batch["memory_indices"][self.game_count,self.step_count])
-            
+                self.rollout.batch["memory"][self.rollout.game_count],
+                0,
+                self.rollout.memory_indices_batch[0][self.rollout.step_count])
             policy,value,memory = self.model(
                 tensor_state,
-                sliced_memory,
-                self.rollout.batch["memory_mask"][self.game_count,self.step_count],
-                self.rollout.batch["memory_indices"][self.game_count,self.step_count])
-            
+                sliced_memory.unsqueeze(0),
+                self.rollout.memory_mask_batch[self.rollout.game_count,self.rollout.step_count].unsqueeze(0),
+                self.rollout.memory_indices_batch[self.rollout.game_count,self.rollout.step_count].unsqueeze(0))
             policy          = policy.squeeze()
             list_action     = self.env.getValidActions(state)
             action_mask     = torch.tensor(list_action,dtype=torch.float32)
@@ -60,16 +54,17 @@ class Agent():
 
             
             if self.env.getReward(state)==-1:
-                self.rollout.add_data(state        = torch.from_numpy(state),
-                                    action         = action,
-                                    value          = value.item(),
-                                    reward         = 0.0,
-                                    done           = 0,
-                                    valid_action   = action_mask,
-                                    prob           = log_prob,
-                                    memory         = memory
+                self.rollout.add_data(state      = torch.from_numpy(state),
+                                    action       = action,
+                                    value        = value.item(),
+                                    reward       = 0.0,
+                                    done         = 0,
+                                    valid_action = action_mask,
+                                    prob         = log_prob,
+                                    memory       = memory.squeeze(0),
+                                    policy       = policy
                                     )
-                self.step_count+=1
+                self.rollout.step_count+=1
             else:
                 self.rollout.add_data(state      = torch.from_numpy(state),
                                     action       = action, 
@@ -78,10 +73,11 @@ class Agent():
                                     done         = 1,
                                     valid_action = action_mask,
                                     prob         = log_prob,
-                                    memory       = memory
+                                    memory       = memory.squeeze(0),
+                                    policy       = policy
                                     )
-                self.game_count+=1
-                self.step_count=0
+                self.rollout.game_count+=1
+                self.rollout.step_count=0
         
         return action,per 
     
@@ -94,7 +90,6 @@ class Agent():
             - num_games: (`int`): number of games.
             
         """
-        self.model.transformer_pol.reset_memory(batch_size=1,mem_length=0)
         win_rate =  self.env.run(self.play,num_games,np.array([0.]),1)[0] / num_games
         # print(num_games,win_rate)
         return win_rate

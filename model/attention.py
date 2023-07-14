@@ -41,7 +41,6 @@ class MultiHeadAttention(nn.Module):
         # Get number of training examples and sequence lengths
         N = query.shape[0]
         value_len, key_len, query_len = values.shape[1], keys.shape[1], query.shape[1]
-
         # Split the embedding into self.num_heads different pieces
         values = values.reshape(N, value_len, self.num_heads, self.head_size)
         keys = keys.reshape(N, key_len, self.num_heads, self.head_size)
@@ -50,25 +49,21 @@ class MultiHeadAttention(nn.Module):
         values = self.values(values)  # (N, value_len, heads, head_dim)
         keys = self.keys(keys)  # (N, key_len, heads, head_dim)
         queries = self.queries(query)  # (N, query_len, heads, heads_dim)
-
         # Einsum does matrix mult. for query*keys for each training example
         energy = torch.einsum("nqhd,nkhd->nhqk", [queries, keys])
         # Mask padded indices so their attention weights become 0
         if mask is not None:
             energy = energy.masked_fill(mask.unsqueeze(1).unsqueeze(1) == 0, float("-1e20")) # -inf causes NaN
-
         # Normalize energy values and apply softmax wo retreive the attention scores
         attention = torch.softmax(energy / (self.embed_dim ** (1 / 2)), dim=3)
         # attention shape: (N, heads, query_len, key_len)
-
         # Scale values by attention weights
         out = torch.einsum("nhql,nlhd->nqhd", [attention, values]).reshape(
             N, query_len, self.num_heads * self.head_size
-        )
+        ) # attention shape: (N, heads, query_len, key_len)
         # Forward projection
         out = self.fc_out(out)
-        return out, attention
-
+        return out
 
 
 

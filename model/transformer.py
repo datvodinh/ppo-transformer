@@ -26,8 +26,7 @@ class SinusoidalPE(nn.Module):
         seq            = torch.arange(int(seq_len) - 1, -1, -1.)
         sinusoidal_inp = seq.view(-1,1) * self.inv_freqs.view(1,-1)
         pos_emb        = torch.cat((sinusoidal_inp.sin(), sinusoidal_inp.cos()), dim = -1)
-        return pos_emb.unsqueeze(1)
-
+        return pos_emb
 class TransformerBlock(nn.Module):
     """Transformer Block"""
     def __init__(self,embed_dim,num_heads,config):
@@ -78,7 +77,7 @@ class GatedTransformerXL(nn.Module):
         # Input embedding layer
         self.linear_embedding  = nn.Linear(input_dim, self.embed_dim)
         nn.init.orthogonal_(self.linear_embedding.weight, np.sqrt(2))
-        self.pos_embedding     = SinusoidalPE(dim = self.embed_dim)
+        self.pos_embedding     = SinusoidalPE(dim = self.embed_dim)(self.max_episode_steps)
         
         # Instantiate transformer blocks
         self.transformer_blocks = nn.ModuleList([
@@ -100,14 +99,13 @@ class GatedTransformerXL(nn.Module):
         h = self.activation(self.linear_embedding(h))
 
         # Add positional encoding to every transformer block input
-        pos_embedding = self.pos_embedding(self.max_episode_steps)[memory_indices]
+        pos_embedding = self.pos_embedding[memory_indices.long()]
         memories = memories + pos_embedding.unsqueeze(2)
-
         # Forward transformer blocks
         out_memories = []
         for i, block in enumerate(self.transformer_blocks):
             out_memories.append(h.detach())
-            h = block(h.unsqueeze(1), memories[:, :, i], mask) # args: value, key, query, mask
+            h = block(h.unsqueeze(1), memories[:, :, i], mask) # args:  query, key, mask
             h = h.squeeze()
             if len(h.shape) == 1:
                 h = h.unsqueeze(0)

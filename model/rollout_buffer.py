@@ -14,6 +14,7 @@ class RolloutBuffer:
         self.embed_dim          = config["embed_dim"]
         self.state_size         = state_size
         self.action_size        = action_size
+        self.n_mini_batches     = config["n_mini_batches"]
         
         self.game_count         = 0 #track current game
         self.step_count         = 0 #track current time step in game
@@ -41,47 +42,43 @@ class RolloutBuffer:
         3, 4, 5, 6
         """
         self.memory_mask_batch    = torch.zeros((self.num_game_per_batch,self.max_eps_length,self.memory_length))
-        self.memory_indices_batch = torch.zeros((self.num_game_per_batch,self.max_eps_length,self.memory_length))
+        self.memory_indices_batch = torch.zeros((self.num_game_per_batch,self.max_eps_length,self.memory_length)).int()
         for i in range(self.max_eps_length):
             self.memory_mask_batch[:,i]    = self.memory_mask[torch.clip(torch.tensor([[i]]), 0, self.memory_length - 1)]
-            self.memory_indices_batch[:,i] = self.memory_indices[i]
+            self.memory_indices_batch[:,i] = self.memory_indices[i].int()
 
-
-
+        self.memory_index_batch = torch.arange(self.num_game_per_batch).unsqueeze(1).expand((self.num_game_per_batch,self.max_eps_length))
 
         self.batch = {
             "states"        : torch.zeros((self.num_game_per_batch,self.max_eps_length,self.state_size)),
             "actions"       : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "values"        : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "probs"         : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
+            "policy"        : torch.zeros((self.num_game_per_batch,self.max_eps_length,self.action_size)),
             "dones"         : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "action_mask"   : torch.zeros((self.num_game_per_batch,self.max_eps_length,self.action_size)),
             "rewards"       : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "padding"       : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "advantages"    : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "memory"        : torch.zeros((self.num_game_per_batch,self.max_eps_length, self.num_blocks, self.embed_dim)),
-            "memory_mask"   : self.memory_mask_batch,
-            "memory_indices": self.memory_indices_batch
         }
 
 
 
 
 
-    def add_data(self,state,action,value,reward,done,valid_action,prob,memory):
+    def add_data(self,state,action,value,reward,done,valid_action,prob,memory,policy):
         """Add data to rollout buffer"""
-        try:
-            self.batch["states"][self.game_count][self.step_count]         = state
-            self.batch["actions"][self.game_count][self.step_count]        = action
-            self.batch["values"][self.game_count][self.step_count]         = value
-            self.batch["probs"][self.game_count][self.step_count]          = prob
-            self.batch["dones"][self.game_count][self.step_count]          = done
-            self.batch["action_mask"][self.game_count][self.step_count]    = valid_action
-            self.batch["rewards"][self.game_count][self.step_count]        = reward
-            self.batch["padding"][self.game_count][self.step_count]        = 1
-            self.batch["memory"][self.game_count][self.step_count]         = memory
-        except:
-            pass
+        self.batch["states"][self.game_count][self.step_count]      = state
+        self.batch["actions"][self.game_count][self.step_count]     = action
+        self.batch["values"][self.game_count][self.step_count]      = value
+        self.batch["probs"][self.game_count][self.step_count]       = prob
+        self.batch["dones"][self.game_count][self.step_count]       = done
+        self.batch["action_mask"][self.game_count][self.step_count] = valid_action
+        self.batch["rewards"][self.game_count][self.step_count]     = reward
+        self.batch["padding"][self.game_count][self.step_count]     = 1
+        self.batch["memory"][self.game_count][self.step_count]      = memory
+        self.batch["policy"][self.game_count][self.step_count]      = policy
 
     def reset_data(self):
         """Clear all data"""
@@ -90,15 +87,17 @@ class RolloutBuffer:
             "actions"       : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "values"        : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "probs"         : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
+            "policy"        : torch.zeros((self.num_game_per_batch,self.max_eps_length,self.action_size)),
             "dones"         : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "action_mask"   : torch.zeros((self.num_game_per_batch,self.max_eps_length,self.action_size)),
             "rewards"       : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "padding"       : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "advantages"    : torch.zeros((self.num_game_per_batch,self.max_eps_length)),
             "memory"        : torch.zeros((self.num_game_per_batch,self.max_eps_length, self.num_blocks, self.embed_dim)),
-            "memory_mask"   : self.memory_mask_batch,
-            "memory_indices": self.memory_indices_batch
         }
+
+        self.game_count = 0
+        self.step_count = 0
         
 
 
@@ -135,11 +134,13 @@ class RolloutBuffer:
             "actions":        self.batch["actions"],
             "values":         self.batch["values"],
             "probs":          self.batch["probs"],
+            "policy":         self.batch["policy"],
             "action_mask":    self.batch["action_mask"],
             "advantages":     self.batch["advantages"],
-            "state":          self.batch["states"], 
-            "memory_mask":    self.batch["memory_mask"],
-            "memory_indices": self.batch["memory_indices"],
+            "states":         self.batch["states"], 
+            "memory_mask":    self.memory_mask_batch,
+            "memory_indices": self.memory_indices_batch,
+            "memory_index":   self.memory_index_batch
         }
 
         # Flatten all samples and convert them to a tensor except memories and its memory mask
@@ -147,6 +148,7 @@ class RolloutBuffer:
         padding = self.batch["padding"].reshape(-1)
         for key, value in samples.items():
             self.samples[key] = value.reshape(value.shape[0] * value.shape[1], *value.shape[2:])[padding!=0]
+        self.batch_size = self.samples["actions"].shape[0]
     def mini_batch_generator(self):
         """
         Overview:
@@ -162,11 +164,16 @@ class RolloutBuffer:
         for start in range(0, self.batch_size, mini_batch_size):
             # Compose mini batches
             end = start + mini_batch_size
-            mini_batch_indices = indices[start: end]
-            mini_batch = {}
-            for key, value in self.samples.items():
-                mini_batch[key] = value[mini_batch_indices].to(self.device)
-            yield mini_batch
+            if end < self.batch_size:
+                mini_batch_indices = indices[start: end]
+                mini_batch = {}
+                for key, value in self.samples.items():
+                    if key == "memory_index":
+                        # Add the correct episode memories to the concerned mini batch
+                        mini_batch["memory"] = self.batch["memory"][value[mini_batch_indices]]
+                    else:
+                        mini_batch[key] = value[mini_batch_indices]
+                yield mini_batch
 
     @staticmethod
     def batched_index_select(input, dim, index):
@@ -192,6 +199,7 @@ class RolloutBuffer:
         expanse[0] = -1
         expanse[dim] = -1
         index = index.expand(expanse)
+        index = index.to(torch.int64)
         return torch.gather(input, dim, index)
 
                 
