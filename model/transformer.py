@@ -28,38 +28,64 @@ class SinusoidalPE(nn.Module):
         pos_emb        = torch.cat((sinusoidal_inp.sin(), sinusoidal_inp.cos()), dim = -1)
         return pos_emb
 class TransformerBlock(nn.Module):
-    """Transformer Block"""
-    def __init__(self,embed_dim,num_heads,config):
+    def __init__(self, embed_dim, num_heads, config):
+        """
+        Overview: Initialize a Transformer Block.
+        
+        Arguments:
+            embed_dim (int): Dimensionality of the input embeddings.
+            num_heads (int): Number of attention heads.
+            config (dict): Configuration parameters for the GRU gate.
+        """
         super().__init__()
-        self.attention   = MultiHeadAttention(embed_dim,num_heads)
+        self.attention   = MultiHeadAttention(embed_dim, num_heads)
         self.layer_norm1 = nn.LayerNorm(embed_dim)
         self.layer_norm2 = nn.LayerNorm(embed_dim)
-        self.gate1       = GRUGate(embed_dim,config['gru_bias'])
-        self.gate2       = GRUGate(embed_dim,config['gru_bias'])
+        self.gate1       = GRUGate(embed_dim, config['gru_bias'])
+        self.gate2       = GRUGate(embed_dim, config['gru_bias'])
 
         self.fc = nn.Sequential(
-            nn.Linear(embed_dim,embed_dim),
+            nn.Linear(embed_dim, embed_dim),
             nn.GELU(),
-            nn.Linear(embed_dim,embed_dim),
+            nn.Linear(embed_dim, embed_dim),
             nn.GELU()
         )
-            
 
-    def forward(self,query,key,mask=None):
+    def forward(self, query, key, mask=None):
+        """
+        Overview: Forward pass of the Transformer Block.
+        
+        Arguments:
+            query (tensor): Query tensor.
+            key (tensor): Key tensor.
+            mask (tensor): Mask tensor for attention, indicating which elements to attend to.
+        
+        Returns:
+            out (tensor): Output tensor after the Transformer Block.
+        """
         norm_key = self.layer_norm1(key)
-        Y        = self.attention(self.layer_norm1(query),norm_key,norm_key,mask)
-        out      = self.gate1(query,Y)
+        Y        = self.attention(self.layer_norm1(query), norm_key, norm_key, mask)
+        out      = self.gate1(query, Y)
         E        = self.fc(self.layer_norm2(out))
-        out      = self.gate2(out,E)
-        assert torch.isnan(out).any()==False, "Transformer block return NaN!"
+        out      = self.gate2(out, E)
+        assert torch.isnan(out).any() == False, "Transformer block returned NaN!"
 
         return out
 
 
 
 
+
 class GatedTransformerXL(nn.Module):
-    """Gated Transformer XL model"""
+    """
+    Overview:
+        Initialize a Gated Transformer XL model.
+    
+    Arguments:
+        config (dict): Configuration parameters for the model.
+        input_dim (int): Dimensionality of the input.
+        max_episode_steps (int): Maximum number of episode steps.
+    """
     def __init__(self, 
                  config:dict,
                  input_dim:int,
