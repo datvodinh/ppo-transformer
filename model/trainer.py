@@ -64,22 +64,6 @@ class Trainer:
 
         return actor_loss.mean(), critic_loss.mean(), total_loss.mean(), entropy.mean()
     
-    def _remove_padding(self,
-                 t:torch.Tensor,
-                 padding:torch.Tensor,
-                 value = -100):
-        """
-        Overviews:
-            Return tensor with padding for policy and value loss.
-        Arguments:
-            - t: (`torch.Tensor`): tensor
-            - padding: (`torch.Tensor`): padding mask
-        Returns:
-            - Tensor t without padding
-        """
-        t =  t.masked_fill(padding==0,value=float(str(value)))
-        return t[t!=value]
-
     def train(self,write_data=True):
         training = True
 
@@ -100,16 +84,15 @@ class Trainer:
                                         1,
                                         mini_batch["memory_indices"])
                     pol_new,val_new,_  = self.model(mini_batch["states"],sliced_memory,mini_batch["memory_mask"],mini_batch["memory_indices"])
-                    val_new         = val_new.squeeze(1)
                     log_prob_new, entropy = self.dist.log_prob(pol_new,mini_batch["actions"].view(1,-1),mini_batch["action_mask"])
 
                     Kl = self.dist.kl_divergence(mini_batch["policy"],pol_new)
                     actor_loss, critic_loss, total_loss, entropy = self._truly_loss(
                         value        = mini_batch["values"].reshape(-1).detach(),
-                        value_new    = val_new,
+                        value_new    = val_new.squeeze(1),
                         entropy      = entropy,
                         log_prob     = mini_batch["probs"].reshape(-1).detach(),
-                        log_prob_new = log_prob_new,
+                        log_prob_new = log_prob_new.squeeze(0),
                         Kl           = Kl,
                         advantage    = mini_batch["advantages"].reshape(-1).detach(),
                     )
