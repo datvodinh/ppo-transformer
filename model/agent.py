@@ -33,7 +33,8 @@ class Agent():
             - action: (`int`): Agent's action
             - per: (`List`): per file
         """
-        self.model.eval()
+        list_action     = self.env.getValidActions(state)
+        action_mask     = torch.tensor(list_action,dtype=torch.float32)
         with torch.no_grad():
             try: # prevent out of index
                 tensor_state        = torch.tensor(state.reshape(1,-1),dtype=torch.float32)
@@ -47,8 +48,7 @@ class Agent():
                     self.rollout.memory_mask_batch[self.rollout.game_count,self.rollout.step_count].unsqueeze(0),
                     self.rollout.memory_indices_batch[self.rollout.game_count,self.rollout.step_count].unsqueeze(0))
                 policy          = policy.squeeze()
-                list_action     = self.env.getValidActions(state)
-                action_mask     = torch.tensor(list_action,dtype=torch.float32)
+                
                 action,log_prob = self.dist.sample_action(policy,action_mask)
             
 
@@ -79,11 +79,9 @@ class Agent():
                     self.rollout.game_count+=1
                     self.rollout.step_count=0
             except:
-                list_action     = self.env.getValidActions(state)
                 action      = np.random.choice(np.where(list_action==1)[0])
 
             if action_mask[action] != 1:
-                list_action     = self.env.getValidActions(state)
                 action      = np.random.choice(np.where(list_action==1)[0])
         
         return action,per 
