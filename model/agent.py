@@ -35,49 +35,56 @@ class Agent():
         """
         self.model.eval()
         with torch.no_grad():
-            tensor_state        = torch.tensor(state.reshape(1,-1),dtype=torch.float32)
-            sliced_memory       = self.rollout.batched_index_select(
-                self.rollout.batch["memory"][self.rollout.game_count],
-                0,
-                self.rollout.memory_indices_batch[0][self.rollout.step_count])
-            policy,value,memory = self.model(
-                tensor_state,
-                sliced_memory.unsqueeze(0),
-                self.rollout.memory_mask_batch[self.rollout.game_count,self.rollout.step_count].unsqueeze(0),
-                self.rollout.memory_indices_batch[self.rollout.game_count,self.rollout.step_count].unsqueeze(0))
-            policy          = policy.squeeze()
-            list_action     = self.env.getValidActions(state)
-            action_mask     = torch.tensor(list_action,dtype=torch.float32)
-            action,log_prob = self.dist.sample_action(policy,action_mask)
-            if action_mask[action] != 1:
-                action      = np.random.choice(np.where(list_action==1)[0])
+            try: # prevent out of index
+                tensor_state        = torch.tensor(state.reshape(1,-1),dtype=torch.float32)
+                sliced_memory       = self.rollout.batched_index_select(
+                    self.rollout.batch["memory"][self.rollout.game_count],
+                    0,
+                    self.rollout.memory_indices_batch[0][self.rollout.step_count])
+                policy,value,memory = self.model(
+                    tensor_state,
+                    sliced_memory.unsqueeze(0),
+                    self.rollout.memory_mask_batch[self.rollout.game_count,self.rollout.step_count].unsqueeze(0),
+                    self.rollout.memory_indices_batch[self.rollout.game_count,self.rollout.step_count].unsqueeze(0))
+                policy          = policy.squeeze()
+                list_action     = self.env.getValidActions(state)
+                action_mask     = torch.tensor(list_action,dtype=torch.float32)
+                action,log_prob = self.dist.sample_action(policy,action_mask)
+            
 
             
-            if self.env.getReward(state)==-1:
-                self.rollout.add_data(state      = torch.from_numpy(state),
-                                    action       = action,
-                                    value        = value.item(),
-                                    reward       = 0.0,
-                                    done         = 0,
-                                    valid_action = action_mask,
-                                    prob         = log_prob,
-                                    memory       = memory.squeeze(0),
-                                    policy       = policy
-                                    )
-                self.rollout.step_count+=1
-            else:
-                self.rollout.add_data(state      = torch.from_numpy(state),
-                                    action       = action, 
-                                    value        = value.item(),
-                                    reward       = self.reward[int(self.env.getReward(state))] * 1.0,
-                                    done         = 1,
-                                    valid_action = action_mask,
-                                    prob         = log_prob,
-                                    memory       = memory.squeeze(0),
-                                    policy       = policy
-                                    )
-                self.rollout.game_count+=1
-                self.rollout.step_count=0
+                if self.env.getReward(state)==-1:
+                    self.rollout.add_data(state      = torch.from_numpy(state),
+                                        action       = action,
+                                        value        = value.item(),
+                                        reward       = 0.0,
+                                        done         = 0,
+                                        valid_action = action_mask,
+                                        prob         = log_prob,
+                                        memory       = memory.squeeze(0),
+                                        policy       = policy
+                                        )
+                    self.rollout.step_count+=1
+                else:
+                    self.rollout.add_data(state      = torch.from_numpy(state),
+                                        action       = action, 
+                                        value        = value.item(),
+                                        reward       = self.reward[int(self.env.getReward(state))] * 1.0,
+                                        done         = 1,
+                                        valid_action = action_mask,
+                                        prob         = log_prob,
+                                        memory       = memory.squeeze(0),
+                                        policy       = policy
+                                        )
+                    self.rollout.game_count+=1
+                    self.rollout.step_count=0
+            except:
+                list_action     = self.env.getValidActions(state)
+                action      = np.random.choice(np.where(list_action==1)[0])
+
+            if action_mask[action] != 1:
+                list_action     = self.env.getValidActions(state)
+                action      = np.random.choice(np.where(list_action==1)[0])
         
         return action,per 
     
