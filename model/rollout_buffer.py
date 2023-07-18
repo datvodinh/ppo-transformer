@@ -9,9 +9,9 @@ class RolloutBuffer:
 
         self.max_eps_length     = config["max_eps_length"]
         self.num_game_per_batch = config["num_game_per_batch"]
-        self.memory_length      = config["memory_length"]
-        self.num_blocks         = config["num_blocks"]
-        self.embed_dim          = config["embed_dim"]
+        self.memory_length      = config["transformer"]["memory_length"]
+        self.num_blocks         = config["transformer"]["num_blocks"]
+        self.embed_dim          = config["transformer"]["embed_dim"]
         self.state_size         = state_size
         self.action_size        = action_size
         self.n_mini_batches     = config["n_mini_batches"]

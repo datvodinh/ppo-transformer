@@ -41,8 +41,8 @@ class TransformerBlock(nn.Module):
         self.attention   = MultiHeadAttention(embed_dim, num_heads)
         self.layer_norm1 = nn.LayerNorm(embed_dim)
         self.layer_norm2 = nn.LayerNorm(embed_dim)
-        self.gate1       = GRUGate(embed_dim, config['gru_bias'])
-        self.gate2       = GRUGate(embed_dim, config['gru_bias'])
+        self.gate1       = GRUGate(embed_dim, config["transformer"]['gru_bias'])
+        self.gate2       = GRUGate(embed_dim, config["transformer"]['gru_bias'])
 
         self.fc = nn.Sequential(
             nn.Linear(embed_dim, embed_dim),
@@ -93,11 +93,11 @@ class GatedTransformerXL(nn.Module):
         
         super().__init__()
         self.config            = config
-        self.num_blocks        = config["num_blocks"]
-        self.embed_dim         = config["embed_dim"]
-        self.num_heads         = config["num_heads"]
+        self.num_blocks        = config["transformer"]["num_blocks"]
+        self.embed_dim         = config["transformer"]["embed_dim"]
+        self.num_heads         = config["transformer"]["num_heads"]
         self.heads_dim         = self.embed_dim // self.num_heads
-        self.memory_length     = config["memory_length"]
+        self.memory_length     = config["transformer"]["memory_length"]
         self.max_episode_steps = max_episode_steps
         self.activation        = nn.GELU()
         # Input embedding layer

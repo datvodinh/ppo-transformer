@@ -1,9 +1,7 @@
 from torch.distributions import Categorical,kl_divergence
 import torch
 import torch.nn as nn
-import numpy as np
-import time
-import os
+import json
 from model.model import PPOTransformerModel
 from model.agent import Agent
 from model.writer import Writer
@@ -11,37 +9,61 @@ from model.distribution import Distribution
 
 class Trainer:
     """Train the model"""
-    def __init__(self,config,env,writer_path=None) -> None:
+    def __init__(self,config,env,writer_path=None,save_path=None) -> None:
         self.config        = config
         self.env           = env
 
         self.model         = PPOTransformerModel(config,self.env.getStateSize(),self.env.getActionSize())
         self.optimizer     = torch.optim.AdamW(self.model.parameters(),lr=config['lr'])
-        self.memory_length = config["memory_length"]
+        self.memory_length = config["transformer"]["memory_length"]
         if writer_path is not None:
             self.writer    = Writer(writer_path)
+        if save_path is not None:
+            self.save_path = save_path
+
         self.agent         = Agent(self.env,self.model,config)
         self.dist          = Distribution()
+
+        try:
+            self.model.load_state_dict(torch.load(f'{save_path}model.pt'))
+            with open(f"{save_path}stat.json","r") as f:
+                self.data = json.load(f)
+            print('PROGRESS RESTORED!')
+        except:
+            print("TRAIN FROM BEGINING!")
+            self.data = {
+                "step":0,
+                "entropy_coef":config["entropy_coef"]["start"]
+            }
+
+        self.entropy_coef = self.data["entropy_coef"]
+        self.entropy_coef_step = (config["entropy_coef"]["start"] - config['entropy_coef']['end']) / config['entropy_coef']['step']
+        
+
+    def _entropy_coef_schedule(self):
+        self.entropy_coef -= self.entropy_coef_step
+        if self.entropy_coef <= self.config['entropy_coef']['end']:
+            self.entropy_coef = self.config['entropy_coef']['end']
 
     def _truly_loss(self,value,value_new,entropy,log_prob,log_prob_new,Kl,advantage):
         """
         Overview:
-            Calculate Total Loss
+            Calculates the total loss using Truly PPO method.
 
         Arguments:
-            - value: (`torch.Tensor`):  
-            - value_new: (`torch.Tensor`): 
-            - entropy: (`torch.Tensor`): 
-            - log_prob: (`torch.Tensor`): 
-            - log_prob_new: (`torch.Tensor`): 
-            - advantage: (`torch.Tensor`):  
+            - value: (`torch.Tensor`): The predicted values.
+            - value_new: (`torch.Tensor`): The updated predicted values.
+            - entropy: (`torch.Tensor`): The entropy.
+            - log_prob: (`torch.Tensor`): The log probabilities of the actions.
+            - log_prob_new: (`torch.Tensor`): The updated log probabilities of the actions.
+            - Kl: (`torch.Tensor`): The KL divergence.
+            - advantage: (`torch.Tensor`): The advantages.
 
-        Return:
-            - actor_loss: (`torch.Tensor`): 
-            - critic_loss: (`torch.Tensor`): 
-            - total_loss: (`torch.Tensor`): 
-
-        
+        Returns:
+            - actor_loss: (`torch.Tensor`): The actor loss.
+            - critic_loss: (`torch.Tensor`): The critic loss.
+            - total_loss: (`torch.Tensor`): The total loss.
+            - entropy: (`torch.Tensor`): The entropy.
         """
         #Calculate returns and advantage
         
@@ -52,26 +74,32 @@ class Trainer:
         ratios          = torch.exp(torch.clamp(log_prob_new-log_prob.detach(),min=-20.,max=5.))
         R_dot_A = ratios * advantage
         actor_loss      = -torch.where(
-                            (Kl >= self.config["policy_kl_range"]) & (R_dot_A > advantage),
-                            R_dot_A - self.config["policy_params"] * Kl,
-                            R_dot_A - self.config["policy_kl_range"]
+                            (Kl >= self.config["PPO"]["policy_kl_range"]) & (R_dot_A > advantage),
+                            R_dot_A - self.config["PPO"]["policy_params"] * Kl,
+                            R_dot_A - self.config["PPO"]["policy_kl_range"]
                         )
 
-        value_clipped         = value + torch.clamp(value_new - value, -self.config["value_clip"], self.config["value_clip"])
+        value_clipped         = value + torch.clamp(value_new - value, -self.config["PPO"]["value_clip"], self.config["PPO"]["value_clip"])
         critic_loss           = 0.5 * torch.max((returns-value_new)**2,(returns-value_clipped)**2)
   
-        total_loss            = actor_loss + self.config["critic_coef"] * critic_loss - self.config["entropy_coef"] * entropy
+        total_loss            = actor_loss + self.config["PPO"]["critic_coef"] * critic_loss - self.entropy_coef * entropy
 
         return actor_loss.mean(), critic_loss.mean(), total_loss.mean(), entropy.mean()
     
     def train(self,write_data=True):
+        """
+        Overview:
+            Trains the model.
+
+        Arguments:
+            - write_data: (`bool`): Whether to write data to Tensorboard or not.
+        """
         training = True
 
-        step = 0
         while training:
 
             win_rate = self.agent.run(num_games=self.config["num_game_per_batch"])
-            self.agent.rollout.cal_advantages(self.config["gamma"],self.config["gae_lambda"])
+            self.agent.rollout.cal_advantages(self.config["PPO"]["gamma"],self.config["PPO"]["gae_lambda"])
             self.agent.rollout.prepare_batch()
             self.model.train()
             
@@ -102,10 +130,11 @@ class Trainer:
                             total_loss.backward()
                             nn.utils.clip_grad_norm_(self.model.parameters(),max_norm=self.config["max_grad_norm"])
                             self.optimizer.step()
+                            self._entropy_coef_schedule()
                     if write_data:  
                         with torch.no_grad():
                             self.writer.add(
-                                    step        = step,
+                                    step        = self.data["step"],
                                     win_rate    = win_rate,
                                     reward      = self.agent.rollout.batch["rewards"].mean(),
                                     entropy     = entropy,
@@ -116,10 +145,22 @@ class Trainer:
                                     kl_max      = Kl.max().item(),
                                     kl_min      = Kl.min().item()
                                 )
-                            step+=1
-            
+                            self._save_log()
+                        
+                 
+            self._save_model()
             self.agent.rollout.reset_data()
 
-    def _save_model(model:PPOTransformerModel,path):
-        torch.save(model.state_dict(),path)
+    def _save_model(self):
+        """
+        Overview:
+            Saves the model and other data.
+        """
+        torch.save(self.model.state_dict(), f'{self.save_path}model.pt')
+        with open(f"{self.save_path}stat.json","w") as f:
+                json.dump(self.data,f)
+
+    def _save_log(self):
+        self.data["step"]+=1
+        self.data["entropy_coef"] = self.entropy_coef
 

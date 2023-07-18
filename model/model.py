@@ -17,22 +17,22 @@ class PPOTransformerModel(nn.Module):
             - action_size (`int`): size of action space
         Return:
         """
-        self.fc = self._layer_init(nn.Linear(state_size,config['embed_dim']),std=np.sqrt(2))
+        self.fc = self._layer_init(nn.Linear(state_size,config["transformer"]['embed_dim']),std=np.sqrt(2))
 
-        self.transformer = GatedTransformerXL(config,input_dim=config['embed_dim'])
+        self.transformer = GatedTransformerXL(config,input_dim=config["transformer"]['embed_dim'])
 
         self.policy = nn.Sequential(
-            nn.ReLU(),
-            self._layer_init(nn.Linear(config['embed_dim'],config['hidden_size']),std=np.sqrt(2)),
-            nn.ReLU(),
-            self._layer_init(nn.Linear(config['hidden_size'],action_size),std=0.01)
+            nn.Tanh(),
+            self._layer_init(nn.Linear(config["transformer"]['embed_dim'],config["transformer"]['hidden_size']),std=np.sqrt(2)),
+            nn.Tanh(),
+            self._layer_init(nn.Linear(config["transformer"]['hidden_size'],action_size),std=0.01)
         )
 
         self.value = nn.Sequential(
-            nn.ReLU(),
-            self._layer_init(nn.Linear(config['embed_dim'],config['hidden_size']),std=np.sqrt(2)),
-            nn.ReLU(),
-            self._layer_init(nn.Linear(config['hidden_size'],1),std=1)
+            nn.Tanh(),
+            self._layer_init(nn.Linear(config["transformer"]['embed_dim'],config["transformer"]['hidden_size']),std=np.sqrt(2)),
+            nn.Tanh(),
+            self._layer_init(nn.Linear(config["transformer"]['hidden_size'],1),std=1)
         )
 
     @staticmethod

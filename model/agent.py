@@ -12,9 +12,9 @@ class Agent():
         super().__init__()
         self.env           = env
         self.model         = model
-        self.memory_length = config["memory_length"]
-        self.num_blocks    = config["num_blocks"]
-        self.embed_dim     = config["embed_dim"]
+        self.memory_length = config["transformer"]["memory_length"]
+        self.num_blocks    = config["transformer"]["num_blocks"]
+        self.embed_dim     = config["transformer"]["embed_dim"]
         self.reward        = config["rewards"]
         self.rollout       = RolloutBuffer(config,env.getStateSize(),env.getActionSize())
         self.dist          = Distribution()
