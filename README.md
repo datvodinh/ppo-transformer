@@ -7,10 +7,10 @@ This project combines the Proximal Policy Optimization (PPO) algorithm with the 
 ## Graph
 
 `Forward`
-![](img/PPO-Transformer%20Graph.png)
+![](img/PPO-Transformer%20Graph.svg)
 
 `Backward`
-![](img/Backward%20Graph.png)
+![](img/Backward%20Graph.svg)
 ## Installation
 
 1. Clone the repository:
