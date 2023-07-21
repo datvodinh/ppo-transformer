@@ -4,7 +4,13 @@
 
 This project combines the Proximal Policy Optimization (PPO) algorithm with the Transformer architecture to solve reinforcement learning tasks. The goal is to leverage the power of the Transformer's attention mechanism and the stability of PPO to train agents capable of achieving high-performance results on various environments.
 
+## Graph
 
+`Forward`
+![](img/PPO-Transformer%20Graph.png)
+
+`Backward`
+![](img/Backward%20Graph.png)
 ## Installation
 
 1. Clone the repository:
